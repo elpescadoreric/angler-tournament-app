@@ -25,59 +25,13 @@ if 'pending_catches' not in st.session_state:
 if 'wristband_color' not in st.session_state:
     st.session_state.wristband_color = {"Everyday Angler Charter Tournament": "Red"}
 
-# Logo URL
+# Logo
 LOGO_URL = "https://i.imgur.com/RgxPgmP.png"
 
-# Weigh-in locations (full list – keep your complete list)
-WEIGH_IN_LOCATIONS = [
-    "Sailfish Marina Resort (Singer Island)",
-    "Riviera Beach Marina Village",
-    "Boynton Harbor Marina",
-    "Palm Beach Yacht Center (Lantana)",
-    "Two Georges Waterfront Grille (Boynton Beach)",
-    "Banana Boat (Boynton Beach)",
-    "Old Key Lime House (Lantana)",
-    "Frigate’s Waterfront Bar & Grill (North Palm Beach)",
-    "Prime Catch (Boynton Beach)",
-    "Waterway Cafe (Palm Beach Gardens)",
-    "Seasons 52 (Palm Beach Gardens)",
-    "The River House (Palm Beach Gardens)",
-    "Sands Harbor Resort & Marina (Pompano Beach)",
-    "PORT 32 Lighthouse Point Marina",
-    "Taha Marine Center (Pompano Beach)",
-    "The Cove Marina / Two Georges at the Cove (Deerfield Beach)",
-    "Shooters Waterfront (Fort Lauderdale)",
-    "Boatyard (Fort Lauderdale)",
-    "Coconuts (Fort Lauderdale)",
-    "Rustic Inn Crabhouse (Fort Lauderdale)",
-    "15th Street Fisheries (Fort Lauderdale)",
-    "Southport Raw Bar (Fort Lauderdale)",
-    "Kaluz Restaurant (Fort Lauderdale)",
-    "Boathouse at the Riverside (Fort Lauderdale)",
-    "Homestead Bayfront Marina",
-    "Black Point Marina (Cutler Bay)",
-    "Haulover Marine Center / Bill Bird Marina",
-    "Crandon Park Marina (Key Biscayne)",
-    "Matheson Hammock Marina (Coral Gables)",
-    "Dinner Key Marina (Coconut Grove)",
-    "Rusty Pelican (Key Biscayne)",
-    "Monty's Raw Bar (Coconut Grove)",
-    "Shuckers Waterfront Bar & Grill (North Bay Village)",
-    "Garcia's Seafood Grille & Fish Market (Miami River)",
-    "Boater's Grill (Key Biscayne)",
-    "American Social (Brickell)",
-    "Billy's Stone Crab Restaurant (Hollywood)",
-    "Seaspice Brasserie & Lounge (Miami River)"
-]
+# Weigh-in locations (full list – keep yours)
+WEIGH_IN_LOCATIONS = [ ... ]  # Your full list
 
-SPECIES_OPTIONS = [
-    "King Mackerel",
-    "Spanish Mackerel",
-    "Wahoo",
-    "Dolphin/Mahi Mahi",
-    "Black Fin Tuna",
-    "Other - Captain's Choice Award Entry"
-]
+SPECIES_OPTIONS = [ ... ]  # Your list
 
 # Simple login/register
 if 'logged_user' not in st.session_state:
