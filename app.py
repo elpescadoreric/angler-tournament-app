@@ -4,13 +4,13 @@ from datetime import datetime
 
 # In-memory storage
 if 'users' not in st.session_state:
-    st.session_state.users = {}  # {username: {'password': pw, 'role': 'Angler' or 'Captain'}}
+    st.session_state.users = {}  # {username: {'password': pw, 'role': role, 'mariner_num': str, 'credentials': filename}}
 if 'daily_anglers' not in st.session_state:
     st.session_state.daily_anglers = []  # Anglers registered for today
 if 'catches' not in st.session_state:
     st.session_state.catches = []
 
-# Weigh-in locations (from our early list)
+# Weigh-in locations
 WEIGH_IN_LOCATIONS = [
     "Sailfish Marina Resort (Singer Island)",
     "Riviera Beach Marina Village",
@@ -66,11 +66,23 @@ if 'logged_user' not in st.session_state:
     st.session_state.logged_user = None
     st.session_state.role = None
 
-def register(username, password, role):
+def register(username, password, role, mariner_num="", credentials_file=None):
     if username in st.session_state.users:
         st.error("Username taken")
         return False
-    st.session_state.users[username] = {'password': password, 'role': role}
+    if role == "Captain":
+        if not mariner_num:
+            st.error("Merchant Mariner Number required for Captains")
+            return False
+        if not credentials_file:
+            st.error("Credentials upload required for Captains")
+            return False
+    st.session_state.users[username] = {
+        'password': password,
+        'role': role,
+        'mariner_num': mariner_num if role == "Captain" else None,
+        'credentials': credentials_file.name if credentials_file else None
+    }
     return True
 
 def login(username, password):
@@ -83,7 +95,7 @@ def login(username, password):
 
 # App UI
 st.set_page_config(page_title="Everyday Angler Charter Tournament", layout="wide")
-st.title("Everyday Angler Charter Tournament")
+st.title("🎣 Everyday Angler Charter Tournament")
 
 if st.session_state.logged_user is None:
     col1, col2 = st.columns(2)
@@ -105,9 +117,14 @@ if st.session_state.logged_user is None:
             new_user = st.text_input("New Username")
             new_pass = st.text_input("New Password", type="password")
             role = st.selectbox("Role", ["Angler", "Captain"])
+            mariner_num = ""
+            credentials_file = None
+            if role == "Captain":
+                mariner_num = st.text_input("Merchant Mariner Number (required)")
+                credentials_file = st.file_uploader("Upload Image of Credentials (required)", type=["jpg", "png", "pdf"])
             reg_sub = st.form_submit_button("Register")
             if reg_sub:
-                if register(new_user, new_pass, role):
+                if register(new_user, new_pass, role, mariner_num, credentials_file):
                     st.success("Registered! Now log in.")
 else:
     st.success(f"Logged in as **{st.session_state.logged_user}** ({st.session_state.role})")
