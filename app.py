@@ -4,36 +4,82 @@ from datetime import datetime
 
 # In-memory storage
 if 'users' not in st.session_state:
-    st.session_state.users = {}
+    st.session_state.users = {}  # {username: {password, role, active, mariner_num, credentials, picture, contact, booking_link, bio, events}}
 if 'events' not in st.session_state:
     st.session_state.events = {
         "Everyday Angler Charter Tournament": {
-            'description': 'Year-long charter tournament in Palm Beach, Broward, Miami-Dade. Pelagic & Reef divisions.',
-            'start': 'Feb 1, 2026',
-            'end': 'Nov 30, 2026',
+            'description': 'Year-long charter tournament in Palm Beach, Broward, and Miami-Dade counties. Pelagic and Reef divisions.',
+            'start': 'February 1, 2026',
+            'end': 'November 30, 2026',
             'registered_users': []
         }
     }
 if 'user_events' not in st.session_state:
     st.session_state.user_events = {}  # {username: [event_names]}
 if 'daily_anglers' not in st.session_state:
-    st.session_state.daily_anglers = {}
+    st.session_state.daily_anglers = {}  # {event_name: [usernames]}
 if 'catches' not in st.session_state:
-    st.session_state.catches = {}
+    st.session_state.catches = {}  # {event_name: [catches]}
 if 'pending_catches' not in st.session_state:
-    st.session_state.pending_catches = {}
+    st.session_state.pending_catches = {}  # {event_name: [pending]}
 if 'wristband_color' not in st.session_state:
     st.session_state.wristband_color = {"Everyday Angler Charter Tournament": "Red"}
 
-# Logo (your uploaded image)
-LOGO_URL = "https://files.oaiusercontent.com/file-...your-image-id..."  # Replace with actual hosted URL or use st.image with bytes if needed
+# Your logo direct URL
+LOGO_URL = "https://i.imgur.com/RgxPgmP.png"
 
 # Weigh-in locations (full list)
-WEIGH_IN_LOCATIONS = [ ... ]  # Your full list
+WEIGH_IN_LOCATIONS = [
+    "Sailfish Marina Resort (Singer Island)",
+    "Riviera Beach Marina Village",
+    "Boynton Harbor Marina",
+    "Palm Beach Yacht Center (Lantana)",
+    "Two Georges Waterfront Grille (Boynton Beach)",
+    "Banana Boat (Boynton Beach)",
+    "Old Key Lime House (Lantana)",
+    "Frigate’s Waterfront Bar & Grill (North Palm Beach)",
+    "Prime Catch (Boynton Beach)",
+    "Waterway Cafe (Palm Beach Gardens)",
+    "Seasons 52 (Palm Beach Gardens)",
+    "The River House (Palm Beach Gardens)",
+    "Sands Harbor Resort & Marina (Pompano Beach)",
+    "PORT 32 Lighthouse Point Marina",
+    "Taha Marine Center (Pompano Beach)",
+    "The Cove Marina / Two Georges at the Cove (Deerfield Beach)",
+    "Shooters Waterfront (Fort Lauderdale)",
+    "Boatyard (Fort Lauderdale)",
+    "Coconuts (Fort Lauderdale)",
+    "Rustic Inn Crabhouse (Fort Lauderdale)",
+    "15th Street Fisheries (Fort Lauderdale)",
+    "Southport Raw Bar (Fort Lauderdale)",
+    "Kaluz Restaurant (Fort Lauderdale)",
+    "Boathouse at the Riverside (Fort Lauderdale)",
+    "Homestead Bayfront Marina",
+    "Black Point Marina (Cutler Bay)",
+    "Haulover Marine Center / Bill Bird Marina",
+    "Crandon Park Marina (Key Biscayne)",
+    "Matheson Hammock Marina (Coral Gables)",
+    "Dinner Key Marina (Coconut Grove)",
+    "Rusty Pelican (Key Biscayne)",
+    "Monty's Raw Bar (Coconut Grove)",
+    "Shuckers Waterfront Bar & Grill (North Bay Village)",
+    "Garcia's Seafood Grille & Fish Market (Miami River)",
+    "Boater's Grill (Key Biscayne)",
+    "American Social (Brickell)",
+    "Billy's Stone Crab Restaurant (Hollywood)",
+    "Seaspice Brasserie & Lounge (Miami River)"
+]
 
-SPECIES_OPTIONS = [ ... ]  # Your list
+SPECIES_OPTIONS = [
+    "King Mackerel",
+    "Spanish Mackerel",
+    "Wahoo",
+    "Dolphin/Mahi Mahi",
+    "Black Fin Tuna",
+    "Other - Captain's Choice Award Entry"
+]
 
-# Login/Register
+# Simple login/register
 if 'logged_user' not in st.session_state:
     st.session_state.logged_user = None
     st.session_state.role = None
@@ -70,10 +116,12 @@ def login(username, password):
 
 # App UI
 st.set_page_config(page_title="Everyday Angler App", layout="wide")
-col1, col2 = st.columns([1, 4])
-with col1:
+
+# Logo top left
+col_logo, col_title = st.columns([1, 5])
+with col_logo:
     st.image(LOGO_URL, width=150)
-with col2:
+with col_title:
     st.title("Everyday Angler App")
 
 if st.session_state.logged_user is None:
@@ -100,7 +148,7 @@ if st.session_state.logged_user is None:
             reg_sub = st.form_submit_button("Register")
             if reg_sub:
                 if register(new_user, new_pass, confirm_pass, role):
-                    st.success("Registered! Log in to join events.")
+                    st.success("Registered! Log in to complete your profile.")
 else:
     user_data = st.session_state.user_data = st.session_state.users[st.session_state.logged_user]
     st.success(f"Logged in as **{st.session_state.logged_user}** ({user_data['role']})")
@@ -108,6 +156,10 @@ else:
         st.session_state.logged_user = None
         st.session_state.role = None
         st.rerun()
+
+    # Captain inactive warning
+    if user_data['role'] == "Captain" and not user_data.get('active', False):
+        st.warning("**Captain Inactive** – Upload credentials in Profile to activate")
 
     tabs = st.tabs(["Events", "Profile", "My Events"])
 
@@ -127,15 +179,32 @@ else:
 
     with tabs[1]:
         st.header("Your Profile")
-        # Profile editing (same as before)
+        uploaded_pic = st.file_uploader("Upload Profile Picture", type=["jpg", "png"])
+        if uploaded_pic:
+            user_data['picture'] = uploaded_pic.name
+        if user_data.get('picture'):
+            st.image("https://via.placeholder.com/150?text=Profile+Pic", width=150)
+        user_data['contact'] = st.text_input("Contact Info", user_data.get('contact', ""))
+        user_data['booking_link'] = st.text_input("Booking Link", user_data.get('booking_link', ""))
+        user_data['bio'] = st.text_area("Bio", user_data.get('bio', ""))
+        if user_data['role'] == "Captain":
+            user_data['mariner_num'] = st.text_input("Merchant Mariner Number", user_data.get('mariner_num', ""))
+            credentials = st.file_uploader("Upload Credentials", type=["jpg", "png", "pdf"])
+            if credentials:
+                user_data['credentials'] = credentials.name
+                user_data['active'] = True
+                st.success("Credentials uploaded – Captain now active!")
+        if st.button("Save Profile"):
+            st.success("Profile updated!")
 
     with tabs[2]:
         st.header("My Events")
         if user_data['events']:
             for event in user_data['events']:
-                st.write(f"**{event}** – Active")
-                # Event-specific tabs (daily registration, submit catch, etc.)
+                st.subheader(event)
+                # Event-specific features would go here (daily registration, submit catch, leaderboards)
+                st.info("Event features coming soon – daily registration, catch submission, leaderboards")
         else:
             st.info("Join an event from the Events tab")
 
-st.caption("Everyday Angler App – Home for multiple tournaments | Tight lines!")
+st.caption("Everyday Angler App – Your home for charter tournaments | Tight lines!")
