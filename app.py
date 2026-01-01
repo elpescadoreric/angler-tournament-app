@@ -1,22 +1,16 @@
 import streamlit as st
 import pandas as pd
 from datetime import datetime
-import re
-import streamlit_authenticator as stauth
-import yaml
-from yaml.loader import SafeLoader
 
-# In-memory storage (for prototype – upgrade to DB later)
+# In-memory storage
 if 'users' not in st.session_state:
-    st.session_state.users = {}  # {username: {'password': ..., 'role': ..., 'daily_registered': False}}
+    st.session_state.users = {}  # {username: {'password': pw, 'role': 'Angler' or 'Captain'}}
 if 'daily_anglers' not in st.session_state:
-    st.session_state.daily_anglers = []  # list of angler names registered today
+    st.session_state.daily_anglers = []  # Anglers registered for today
 if 'catches' not in st.session_state:
     st.session_state.catches = []
-if 'posts' not in st.session_state:
-    st.session_state.posts = []
 
-# Weigh-in locations from our early list
+# Weigh-in locations (from our early list)
 WEIGH_IN_LOCATIONS = [
     "Sailfish Marina Resort (Singer Island)",
     "Riviera Beach Marina Village",
@@ -58,7 +52,6 @@ WEIGH_IN_LOCATIONS = [
     "Seaspice Brasserie & Lounge (Miami River)"
 ]
 
-# Species list
 SPECIES_OPTIONS = [
     "King Mackerel",
     "Spanish Mackerel",
@@ -68,40 +61,74 @@ SPECIES_OPTIONS = [
     "Other - Captain's Choice Award Entry"
 ]
 
-# Password validation
-def validate_password(password):
-    if len(password) < 8:
-        return "Password must be at least 8 characters"
-    if not re.search(r"\d.*\d", password):
-        return "Password must contain at least 2 numbers"
-    if not re.search(r"[a-z].*[a-z]", password):
-        return "Password must contain at least 2 lowercase letters"
-    if not re.search(r"[A-Z].*[A-Z]", password):
-        return "Password must contain at least 2 uppercase letters"
-    if not re.search(r"[!@#$%^&*()_+\-=\[\]{};':\"\\|,.<>\/?].*[!@#$%^&*()_+\-=\[\]{};':\"\\|,.<>\/?]", password):
-        return "Password must contain at least 2 special characters"
-    return None
+# Simple login/register
+if 'logged_user' not in st.session_state:
+    st.session_state.logged_user = None
+    st.session_state.role = None
 
-# Mock OAuth config for Google/Facebook (in production, use real credentials)
-names = ["Test User"]
-usernames = ["testuser"]
-passwords = ["test123!Ab"]  # Hashed in real app
+def register(username, password, role):
+    if username in st.session_state.users:
+        st.error("Username taken")
+        return False
+    st.session_state.users[username] = {'password': password, 'role': role}
+    return True
 
-config = {'credentials': {'usernames': {usernames[0]: {'name': names[0], 'password': stauth.Hasher(passwords).generate()[0]}}}}
-authenticator = stauth.Authenticate(config['credentials'], "tournament", "auth", cookie_expiry_days=30)
+def login(username, password):
+    user = st.session_state.users.get(username)
+    if user and user['password'] == password:
+        st.session_state.logged_user = username
+        st.session_state.role = user['role']
+        return True
+    return False
 
 # App UI
 st.set_page_config(page_title="Everyday Angler Charter Tournament", layout="wide")
-st.title("🎣 Everyday Angler Charter Tournament")
+st.title("Everyday Angler Charter Tournament")
 
-name, authentication_status, username = authenticator.login('Login', 'main')
+if st.session_state.logged_user is None:
+    col1, col2 = st.columns(2)
+    with col1:
+        st.header("Login")
+        with st.form("login"):
+            username = st.text_input("Username")
+            password = st.text_input("Password", type="password")
+            submitted = st.form_submit_button("Login")
+            if submitted:
+                if login(username, password):
+                    st.success("Logged in!")
+                    st.rerun()
+                else:
+                    st.error("Invalid credentials")
+    with col2:
+        st.header("Register")
+        with st.form("register"):
+            new_user = st.text_input("New Username")
+            new_pass = st.text_input("New Password", type="password")
+            role = st.selectbox("Role", ["Angler", "Captain"])
+            reg_sub = st.form_submit_button("Register")
+            if reg_sub:
+                if register(new_user, new_pass, role):
+                    st.success("Registered! Now log in.")
+else:
+    st.success(f"Logged in as **{st.session_state.logged_user}** ({st.session_state.role})")
+    if st.button("Logout"):
+        st.session_state.logged_user = None
+        st.session_state.role = None
+        st.rerun()
 
-if authentication_status:
-    st.success(f"Logged in as **{name}**")
-    authenticator.logout('Logout', 'sidebar')
+    if st.session_state.role == "Angler":
+        st.header("Daily Registration")
+        st.info("Register for today so your Captain can submit your catch")
+        st.warning("Registration/Entry must be received before exiting the inlet the day of fishing.")
+        if st.button("Register for Today"):
+            if st.session_state.logged_user not in st.session_state.daily_anglers:
+                st.session_state.daily_anglers.append(st.session_state.logged_user)
+                st.success("You are now registered for today!")
+            else:
+                st.info("You are already registered today")
 
-    if st.session_state.role == "Captain":
-        tabs = st.tabs(["Submit Catch", "Leaderboards", "Social Feed"])
+    elif st.session_state.role == "Captain":
+        tabs = st.tabs(["Submit Catch", "Leaderboards"])
 
         with tabs[0]:
             st.header("Submit Catch")
@@ -119,56 +146,46 @@ if authentication_status:
                     landing_video = st.file_uploader("1. Landing Video (show wristband)", type=["mp4", "mov", "avi"])
                 with colv2:
                     weighin_video = st.file_uploader("2. Weigh-in Video (show wristband + scale)", type=["mp4", "mov", "avi"])
+                confirm_password = st.text_input("Re-enter your password to confirm submission", type="password")
                 submitted = st.form_submit_button("Submit Catch")
                 if submitted:
-                    if certifying_captain != st.session_state.logged_user:
-                        st.error("Certifying Captain must match logged-in user")
-                    elif angler_name == "No anglers registered today":
-                        st.error("Angler must register for today first")
+                    if angler_name == "No anglers registered today":
+                        st.error("No anglers registered today")
+                    elif certifying_captain != st.session_state.logged_user:
+                        st.error("Certifying Captain must be you")
+                    elif st.session_state.users[st.session_state.logged_user]['password'] != confirm_password:
+                        st.error("Password incorrect – submission canceled")
                     elif landing_video and landing_video.size < 500000:
                         st.error("Landing video too short")
                     elif weighin_video and weighin_video.size < 500000:
                         st.error("Weigh-in video too short")
                     else:
-                        # Double confirmation
-                        if st.button("Confirm Submission (Final Step)"):
-                            st.session_state.catches.append({
-                                'user': st.session_state.logged_user,
-                                'division': division,
-                                'species': species,
-                                'weight': weight,
-                                'angler_name': angler_name,
-                                'certifying_captain': certifying_captain,
-                                'weigh_in_location': weigh_in_location,
-                                'landing_video': landing_video.name if landing_video else "Missing",
-                                'weighin_video': weighin_video.name if weighin_video else "Missing",
-                                'date': datetime.now().strftime("%Y-%m-%d %H:%M")
-                            })
-                            st.success("Catch submitted successfully!")
+                        st.session_state.catches.append({
+                            'user': st.session_state.logged_user,
+                            'division': division,
+                            'species': species,
+                            'weight': weight,
+                            'angler_name': angler_name,
+                            'certifying_captain': certifying_captain,
+                            'weigh_in_location': weigh_in_location,
+                            'landing_video': landing_video.name if landing_video else "Missing",
+                            'weighin_video': weighin_video.name if weighin_video else "Missing",
+                            'date': datetime.now().strftime("%Y-%m-%d %H:%M")
+                        })
+                        st.success("Catch submitted successfully!")
 
-        # Leaderboard and Social Feed tabs (same as before)
-
-    elif st.session_state.role == "Angler":
-        st.header("Daily Registration")
-        st.info("Register for today so your Captain can submit your catch")
-        if st.button("Register for Today"):
-            if st.session_state.logged_user not in st.session_state.daily_anglers:
-                st.session_state.daily_anglers.append(st.session_state.logged_user)
-                st.success("Registered for today!")
+        with tabs[1]:
+            st.header("Live Leaderboards")
+            div = st.selectbox("Select Division", ["Pelagic", "Reef"])
+            df = pd.DataFrame([c for c in st.session_state.catches if c['division'] == div])
+            if not df.empty:
+                df['adj_weight'] = df.apply(lambda row: row['weight'] + 10 if 'sailfish' in row['species'].lower() else row['weight'], axis=1)
+                df = df.sort_values('adj_weight', ascending=False)
+                df['species'] = df['species'].str.title()
+                st.dataframe(df[['angler_name', 'certifying_captain', 'species', 'adj_weight', 'weigh_in_location', 'date']].rename(
+                    columns={'angler_name': 'Angler', 'certifying_captain': 'Certifying Captain', 'species': 'Species', 'adj_weight': 'Weight (lbs)', 'weigh_in_location': 'Weigh-In Location', 'date': 'Date'}
+                ), use_container_width=True)
             else:
-                st.info("Already registered today")
-
-elif authentication_status is False:
-    st.error("Username/password is incorrect")
-elif authentication_status is None:
-    st.warning("Please enter your username and password")
-
-# Google/Facebook login buttons (mock – real OAuth in production)
-st.markdown("### Or sign in with")
-colg, colf = st.columns(2)
-with colg:
-    st.markdown("[Google Login](#)")  # Replace with real OAuth link
-with colf:
-    st.markdown("[Facebook Login](#)")  # Replace with real OAuth link
+                st.info("No catches yet in this division")
 
 st.caption("Year-long tournament: Feb 1 – Nov 30, 2026 | Registration/Entry must be received before exiting the inlet the day of fishing | All catches require landing + weigh-in videos showing daily wristband and clear scale reading | Tight lines!")
