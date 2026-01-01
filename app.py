@@ -5,7 +5,7 @@ import re
 
 # In-memory storage
 if 'users' not in st.session_state:
-    st.session_state.users = {}
+    st.session_state.users = {}  # Now stores more info for captains
 if 'catches' not in st.session_state:
     st.session_state.catches = []
 if 'posts' not in st.session_state:
@@ -36,7 +36,7 @@ def validate_password(password):
     return None
 
 # Functions
-def register(username, password, confirm_password, role='Angler'):
+def register(username, password, confirm_password, role='Angler', mariner_num="", credentials_image=None):
     error = validate_password(password)
     if error:
         st.error(error)
@@ -47,7 +47,19 @@ def register(username, password, confirm_password, role='Angler'):
     if username in st.session_state.users:
         st.error("Username taken")
         return False
-    st.session_state.users[username] = {'password': password, 'role': role}
+    if role == "Captain":
+        if not mariner_num:
+            st.error("Merchant Mariner Number required for Captains")
+            return False
+        if not credentials_image:
+            st.error("Credentials image required for Captains")
+            return False
+    st.session_state.users[username] = {
+        'password': password,
+        'role': role,
+        'mariner_num': mariner_num if role == "Captain" else None,
+        'credentials': credentials_image.name if credentials_image else None
+    }
     return True
 
 def login(username, password):
@@ -85,20 +97,15 @@ def get_leaderboard(division):
     df['adj_weight'] = df.apply(lambda row: row['weight'] + 10 if 'sailfish' in row['species'].lower() else row['weight'], axis=1)
     df = df.sort_values('adj_weight', ascending=False)
     df['species'] = df['species'].str.title()
-    df['Landing Video'] = df['landing_video'].apply(lambda x: f"[View](https://via.placeholder.com/150?text=Landing+Video+{x})" if x != "Missing" else "Missing")
-    df['Weigh-in Video'] = df['weighin_video'].apply(lambda x: f"[View](https://via.placeholder.com/150?text=Weigh-in+Video+{x})" if x != "Missing" else "Missing")
-    return df[['angler_name', 'certifying_captain', 'species', 'adj_weight', 'Landing Video', 'Weigh-in Video', 'date']].rename(
-        columns={'angler_name': 'Angler', 'certifying_captain': 'Certifying Captain', 'species': 'Species', 'adj_weight': 'Weight (lbs)', 'date': 'Date'}
+    # Clickable profile links
+    df['Angler'] = df['angler_name'].apply(lambda x: f"[{x}](#)" if x else "N/A")
+    df['Certifying Captain'] = df['certifying_captain'].apply(lambda x: f"[{x}](#)" if x else "N/A")
+    # Video links (placeholder – next step: real playback)
+    df['Landing Video'] = df['landing_video'].apply(lambda x: f"[View](https://via.placeholder.com/150?text=Landing+{x})" if x != "Missing" else "Missing")
+    df['Weigh-in Video'] = df['weighin_video'].apply(lambda x: f"[View](https://via.placeholder.com/150?text=Weigh-in+{x})" if x != "Missing" else "Missing")
+    return df[['Angler', 'Certifying Captain', 'species', 'adj_weight', 'Landing Video', 'Weigh-in Video', 'date']].rename(
+        columns={'species': 'Species', 'adj_weight': 'Weight (lbs)', 'date': 'Date'}
     ).head(20)
-
-def add_post(user, content, media=None):
-    media_name = media.name if media else None
-    st.session_state.posts.append({
-        'user': user,
-        'content': content,
-        'media': media_name,
-        'date': datetime.now().strftime("%Y-%m-%d %H:%M")
-    })
 
 # App UI
 st.set_page_config(page_title="Everyday Angler Charter Tournament", layout="wide")
@@ -125,9 +132,14 @@ if 'logged_user' not in st.session_state:
             new_pass = st.text_input("New Password (min 8 chars, 2 nums, 2 lower, 2 upper, 2 special)", type="password")
             confirm_pass = st.text_input("Confirm Password", type="password")
             role = st.selectbox("Role", ["Angler", "Captain"])
+            mariner_num = ""
+            credentials_image = None
+            if role == "Captain":
+                mariner_num = st.text_input("Merchant Mariner Number (required for Captains)")
+                credentials_image = st.file_uploader("Upload Image of Credentials (required for Captains)", type=["jpg", "png", "pdf"])
             reg_sub = st.form_submit_button("Register")
             if reg_sub:
-                if register(new_user, new_pass, confirm_pass, role):
+                if register(new_user, new_pass, confirm_pass, role, mariner_num, credentials_image):
                     st.success("Registered! Now log in.")
 else:
     st.success(f"Logged in as **{st.session_state.logged_user}** ({st.session_state.role})")
