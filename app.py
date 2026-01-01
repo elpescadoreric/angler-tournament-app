@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 from datetime import datetime
 
-# In-memory storage (resets on redeploy – great for testing)
+# In-memory storage
 if 'users' not in st.session_state:
     st.session_state.users = {}
 if 'catches' not in st.session_state:
@@ -39,9 +39,8 @@ def get_leaderboard(division):
     df = pd.DataFrame([c for c in st.session_state.catches if c['division'] == division])
     if df.empty:
         return pd.DataFrame(columns=['User', 'Species', 'Weight (lbs)', 'Date'])
-    # Sailfish +10 lb bonus
     df['adj_weight'] = df.apply(lambda row: row['weight'] + 10 if 'sailfish' in row['species'] else row['weight'], axis=1)
-    df = df.sort_values('adj_weight', ascending=False)[['user', 'species', 'adj_weight', 'date']]
+    df = df.sort_values('adj_weight', descending=True)[['user', 'species', 'adj_weight', 'date']]
     return df.rename(columns={'user': 'User', 'species': 'Species', 'adj_weight': 'Weight (lbs)', 'date': 'Date'}).head(20)
 
 def add_post(user, content):
@@ -53,7 +52,7 @@ def add_post(user, content):
 
 # App UI
 st.set_page_config(page_title="Everyday Angler Charter Tournament", layout="wide")
-st.title("🎣 Everyday Angler Charter Tournament")
+st.title("Everyday Angler Charter Tournament")
 
 if 'logged_user' not in st.session_state:
     col1, col2 = st.columns(2)
@@ -91,7 +90,7 @@ else:
     with tabs[0]:
         st.header("Submit Catch")
         division = st.selectbox("Division", ["Pelagic", "Reef"])
-        species = st.text_input("Species (e.g., Dolphin, Wahoo, Tuna, Snapper, Grouper)")
+        species = st.text_input("Species (e.g., Dolphin, Wahoo, Tuna)")
         weight = st.number_input("Weight (lbs)", min_value=0.0, step=0.1)
         if st.button("Submit Catch"):
             submit_catch(st.session_state.logged_user, division, species, weight)
@@ -116,20 +115,3 @@ else:
             st.divider()
 
 st.caption("Year-long tournament: Feb 1 – Nov 30, 2026 | Tight lines!")
-
-### What to Do Now
-1. Go to your GitHub repo (`angler-tournament-app`)
-2. Edit `app.py` → paste this new code over the old one → commit
-3. Wait 30–60 seconds – the app will auto-update
-
-Then refresh your live URL – you’ll have login, catch submission, leaderboards, and a social feed!
-
-Test it: register a captain, submit a test catch, check the leaderboard.
-
-Once you confirm it’s working, reply “Full version works!” and we can add:
-- Photo/video uploads
-- Captain verification
-- 3-fish bag calculations
-- Your branding/logo
-
-You’ve earned this win – amazing job getting it live! 🎣🏆
