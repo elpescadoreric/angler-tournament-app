@@ -4,9 +4,9 @@ from datetime import datetime
 
 # In-memory storage
 if 'users' not in st.session_state:
-    st.session_state.users = {}  # {username: {'password': pw, 'role': role, 'mariner_num': str, 'credentials': filename}}
+    st.session_state.users = {}  # {username: {'password': pw, 'role': role, 'mariner_num': str, 'credentials': filename, 'profile': dict}}
 if 'daily_anglers' not in st.session_state:
-    st.session_state.daily_anglers = []  # Anglers registered for today
+    st.session_state.daily_anglers = []  # Angler/Team registered for today
 if 'catches' not in st.session_state:
     st.session_state.catches = []
 
@@ -77,11 +77,17 @@ def register(username, password, role, mariner_num="", credentials_file=None):
         if not credentials_file:
             st.error("Credentials upload required for Captains")
             return False
+    profile = {
+        'username': username,
+        'role': role,
+        'joined': datetime.now().strftime("%Y-%m-%d")
+    }
     st.session_state.users[username] = {
         'password': password,
         'role': role,
         'mariner_num': mariner_num if role == "Captain" else None,
-        'credentials': credentials_file.name if credentials_file else None
+        'credentials': credentials_file.name if credentials_file else None,
+        'profile': profile
     }
     return True
 
@@ -116,7 +122,7 @@ if st.session_state.logged_user is None:
         with st.form("register"):
             new_user = st.text_input("New Username")
             new_pass = st.text_input("New Password", type="password")
-            role = st.selectbox("Role", ["Angler", "Captain"])
+            role = st.selectbox("Role", ["Angler/Team", "Captain"])
             mariner_num = ""
             credentials_file = None
             if role == "Captain":
@@ -125,7 +131,7 @@ if st.session_state.logged_user is None:
             reg_sub = st.form_submit_button("Register")
             if reg_sub:
                 if register(new_user, new_pass, role, mariner_num, credentials_file):
-                    st.success("Registered! Now log in.")
+                    st.success("Registered! Profile created. Now log in.")
 else:
     st.success(f"Logged in as **{st.session_state.logged_user}** ({st.session_state.role})")
     if st.button("Logout"):
@@ -133,28 +139,40 @@ else:
         st.session_state.role = None
         st.rerun()
 
-    if st.session_state.role == "Angler":
-        st.header("Daily Registration")
-        st.info("Register for today so your Captain can submit your catch")
-        st.warning("Registration/Entry must be received before exiting the inlet the day of fishing.")
-        if st.button("Register for Today"):
-            if st.session_state.logged_user not in st.session_state.daily_anglers:
-                st.session_state.daily_anglers.append(st.session_state.logged_user)
-                st.success("You are now registered for today!")
-            else:
-                st.info("You are already registered today")
+    tabs = st.tabs(["Profile", "Submit Catch" if st.session_state.role == "Captain" else "Daily Registration", "Leaderboards"])
+
+    with tabs[0]:
+        st.header("Your Profile")
+        profile = st.session_state.users[st.session_state.logged_user]['profile']
+        st.write(f"Username: {profile['username']}")
+        st.write(f"Role: {profile['role']}")
+        st.write(f"Joined: {profile['joined']}")
+        if st.session_state.role == "Captain":
+            st.write(f"Merchant Mariner Number: {st.session_state.users[st.session_state.logged_user]['mariner_num']}")
+            if st.session_state.users[st.session_state.logged_user]['credentials']:
+                st.write(f"Credentials: {st.session_state.users[st.session_state.logged_user]['credentials']}")
+
+    if st.session_state.role == "Angler/Team":
+        with tabs[1]:
+            st.header("Daily Registration")
+            st.info("Register for today so your Captain can submit your catch")
+            st.warning("Registration/Entry must be received before exiting the inlet the day of fishing.")
+            if st.button("Register for Today"):
+                if st.session_state.logged_user not in st.session_state.daily_anglers:
+                    st.session_state.daily_anglers.append(st.session_state.logged_user)
+                    st.success("You are now registered for today!")
+                else:
+                    st.info("You are already registered today")
 
     elif st.session_state.role == "Captain":
-        tabs = st.tabs(["Submit Catch", "Leaderboards"])
-
-        with tabs[0]:
+        with tabs[1]:
             st.header("Submit Catch")
             st.info("**Required**: Two videos – 1. Landing (show angler with daily colored wristband) 2. Weigh-in (show at least 1 team member with daily colored wristband, walk into scale, clear weight). Min 5 seconds each.")
             st.warning("Registration/Entry must be received before exiting the inlet the day of fishing.")
             with st.form("submit_catch", clear_on_submit=True):
                 division = st.selectbox("Division", ["Pelagic", "Reef"])
                 species = st.selectbox("Species", SPECIES_OPTIONS)
-                angler_name = st.selectbox("Angler Name (must have registered today)", st.session_state.daily_anglers or ["No anglers registered today"])
+                angler_name = st.selectbox("Angler/Team Name (must have registered today)", st.session_state.daily_anglers or ["No Angler/Team registered today"])
                 certifying_captain = st.text_input("Certifying Captain's Name", value=st.session_state.logged_user, disabled=True)
                 weight = st.number_input("Weight (lbs)", min_value=0.0, step=0.1)
                 weigh_in_location = st.selectbox("Weigh-In Location", WEIGH_IN_LOCATIONS)
@@ -166,8 +184,8 @@ else:
                 confirm_password = st.text_input("Re-enter your password to confirm submission", type="password")
                 submitted = st.form_submit_button("Submit Catch")
                 if submitted:
-                    if angler_name == "No anglers registered today":
-                        st.error("No anglers registered today")
+                    if angler_name == "No Angler/Team registered today":
+                        st.error("No Angler/Team registered today")
                     elif certifying_captain != st.session_state.logged_user:
                         st.error("Certifying Captain must be you")
                     elif st.session_state.users[st.session_state.logged_user]['password'] != confirm_password:
@@ -191,18 +209,18 @@ else:
                         })
                         st.success("Catch submitted successfully!")
 
-        with tabs[1]:
-            st.header("Live Leaderboards")
-            div = st.selectbox("Select Division", ["Pelagic", "Reef"])
-            df = pd.DataFrame([c for c in st.session_state.catches if c['division'] == div])
-            if not df.empty:
-                df['adj_weight'] = df.apply(lambda row: row['weight'] + 10 if 'sailfish' in row['species'].lower() else row['weight'], axis=1)
-                df = df.sort_values('adj_weight', ascending=False)
-                df['species'] = df['species'].str.title()
-                st.dataframe(df[['angler_name', 'certifying_captain', 'species', 'adj_weight', 'weigh_in_location', 'date']].rename(
-                    columns={'angler_name': 'Angler', 'certifying_captain': 'Certifying Captain', 'species': 'Species', 'adj_weight': 'Weight (lbs)', 'weigh_in_location': 'Weigh-In Location', 'date': 'Date'}
-                ), use_container_width=True)
-            else:
-                st.info("No catches yet in this division")
+    with tabs[2 if st.session_state.role == "Captain" else 1]:
+        st.header("Live Leaderboards")
+        div = st.selectbox("Select Division", ["Pelagic", "Reef"])
+        df = pd.DataFrame([c for c in st.session_state.catches if c['division'] == div])
+        if not df.empty:
+            df['adj_weight'] = df.apply(lambda row: row['weight'] + 10 if 'sailfish' in row['species'].lower() else row['weight'], axis=1)
+            df = df.sort_values('adj_weight', ascending=False)
+            df['species'] = df['species'].str.title()
+            st.dataframe(df[['angler_name', 'certifying_captain', 'species', 'adj_weight', 'weigh_in_location', 'date']].rename(
+                columns={'angler_name': 'Angler/Team', 'certifying_captain': 'Certifying Captain', 'species': 'Species', 'adj_weight': 'Weight (lbs)', 'weigh_in_location': 'Weigh-In Location', 'date': 'Date'}
+            ), use_container_width=True)
+        else:
+            st.info("No catches yet in this division")
 
 st.caption("Year-long tournament: Feb 1 – Nov 30, 2026 | Registration/Entry must be received before exiting the inlet the day of fishing | All catches require landing + weigh-in videos showing daily wristband and clear scale reading | Tight lines!")
