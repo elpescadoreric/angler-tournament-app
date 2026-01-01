@@ -26,7 +26,7 @@ if 'wristband_color' not in st.session_state:
     st.session_state.wristband_color = {"Everyday Angler Charter Tournament": "Red"}
 
 # Reliable logo URL (hosted on stable CDN)
-LOGO_URL = "https://i.imgur.com/RgxPgmP.png"
+LOGO_URL = st.image("https://github.com/elpescadoreric/angler-tournament-app/blob/main/EACT%20Logo%201_clipped.png?raw=true", width=150)
 
 # (Keep your full WEIGH_IN_LOCATIONS and SPECIES_OPTIONS lists – same as before)
 
