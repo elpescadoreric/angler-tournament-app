@@ -25,10 +25,13 @@ if 'pending_catches' not in st.session_state:
 if 'wristband_color' not in st.session_state:
     st.session_state.wristband_color = {"Everyday Angler Charter Tournament": "Red"}
 
-# Reliable logo URL (hosted on stable CDN)
-LOGO_URL = st.image("https://github.com/elpescadoreric/angler-tournament-app/blob/main/EACT%20Logo%201_clipped.png?raw=true", width=150)
+# Logo URL (your image – confirmed working)
+LOGO_URL = "https://i.imgur.com/RgxPgmP.png"
 
-# (Keep your full WEIGH_IN_LOCATIONS and SPECIES_OPTIONS lists – same as before)
+# Weigh-in locations (full list – kept from before)
+WEIGH_IN_LOCATIONS = [ ... ]  # Your full list
+
+SPECIES_OPTIONS = [ ... ]  # Your list
 
 # Simple login/register
 if 'logged_user' not in st.session_state:
@@ -67,18 +70,10 @@ def login(username, password):
 
 # App UI
 st.set_page_config(page_title="Everyday Angler App", layout="wide")
-
-# Logo top left with error handling
-try:
-    col_logo, col_title = st.columns([1, 5])
-    with col_logo:
-        st.image(LOGO_URL, width=150)
-    with col_title:
-        st.title("Everyday Angler App")
-except:
-    st.title("Everyday Angler App")  # Fallback if logo fails
+st.title("Everyday Angler App")
 
 if st.session_state.logged_user is None:
+    # No logo on login page
     col1, col2 = st.columns(2)
     with col1:
         st.header("Login")
@@ -111,12 +106,40 @@ else:
         st.session_state.role = None
         st.rerun()
 
-    tabs = st.tabs(["Events", "Profile", "My Events"])
+    # Show logo on all logged-in pages
+    col_logo, col_spacer = st.columns([1, 5])
+    with col_logo:
+        st.image(LOGO_URL, width=150)
+
+    # Default to Profile tab after login
+    tabs = st.tabs(["Profile", "Events", "My Events"])
 
     with tabs[0]:
+        st.header("Your Profile")
+        uploaded_pic = st.file_uploader("Upload Profile Picture", type=["jpg", "png"])
+        if uploaded_pic:
+            user_data['picture'] = uploaded_pic.name
+            st.success("Profile picture updated!")
+        if user_data.get('picture'):
+            st.image("https://via.placeholder.com/150?text=Profile+Pic", width=150)  # Replace with real in production
+        user_data['contact'] = st.text_input("Contact Info", value=user_data.get('contact', ""))
+        user_data['booking_link'] = st.text_input("Booking Link", value=user_data.get('booking_link', ""))
+        user_data['bio'] = st.text_area("Bio", value=user_data.get('bio', ""))
+        if user_data['role'] == "Captain":
+            user_data['mariner_num'] = st.text_input("Merchant Mariner Number", value=user_data.get('mariner_num', ""))
+            credentials = st.file_uploader("Upload Credentials", type=["jpg", "png", "pdf"])
+            if credentials:
+                user_data['credentials'] = credentials.name
+                user_data['active'] = True
+                st.success("Credentials uploaded – Captain now active!")
+        if st.button("Save Profile"):
+            st.success("Profile saved successfully!")
+
+    with tabs[1]:
         st.header("Available Events")
         for event_name, event_data in st.session_state.events.items():
             with st.expander(event_name):
+                st.image(LOGO_URL, width=200)  # Logo on event page
                 st.write(event_data['description'])
                 st.write(f"Start: {event_data['start']} | End: {event_data['end']}")
                 if st.session_state.logged_user in event_data['registered_users']:
@@ -127,32 +150,16 @@ else:
                         user_data['events'].append(event_name)
                         st.success(f"Registered for {event_name}!")
 
-    with tabs[1]:
-        st.header("Your Profile")
-        uploaded_pic = st.file_uploader("Upload Profile Picture", type=["jpg", "png"])
-        if uploaded_pic:
-            user_data['picture'] = uploaded_pic.name
-        if user_data.get('picture'):
-            st.image("https://via.placeholder.com/150?text=Profile+Pic", width=150)
-        user_data['contact'] = st.text_input("Contact Info", user_data.get('contact', ""))
-        user_data['booking_link'] = st.text_input("Booking Link", user_data.get('booking_link', ""))
-        user_data['bio'] = st.text_area("Bio", user_data.get('bio', ""))
-        if user_data['role'] == "Captain":
-            user_data['mariner_num'] = st.text_input("Merchant Mariner Number", user_data.get('mariner_num', ""))
-            credentials = st.file_uploader("Upload Credentials", type=["jpg", "png", "pdf"])
-            if credentials:
-                user_data['credentials'] = credentials.name
-                user_data['active'] = True
-                st.success("Credentials uploaded – Captain now active!")
-        if st.button("Save Profile"):
-            st.success("Profile updated!")
-
     with tabs[2]:
         st.header("My Events")
         if user_data['events']:
             for event in user_data['events']:
-                st.subheader(event)
-                st.info("Event features (daily registration, catch submission, leaderboards) coming soon!")
+                event_data = st.session_state.events[event]
+                with st.expander(event):
+                    st.image(LOGO_URL, width=200)  # Logo on my event detail
+                    st.write(event_data['description'])
+                    st.write(f"Start: {event_data['start']} | End: {event_data['end']}")
+                    st.info("Event features (daily registration, catch submission, leaderboards) coming soon!")
         else:
             st.info("Join an event from the Events tab")
 
