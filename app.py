@@ -1,19 +1,10 @@
 import streamlit as st
-from streamlit_oauth import OAuth2Component
 import pandas as pd
 from datetime import datetime
-import extra_streamlit_components as stx
-
-# OAuth setup
-GOOGLE_CLIENT_ID = st.secrets["GOOGLE_CLIENT_ID"]
-GOOGLE_CLIENT_SECRET = st.secrets["GOOGLE_CLIENT_SECRET"]
-GOOGLE_REDIRECT_URI = "https://angler-tournament-app.streamlit.app/"
-
-oauth2 = OAuth2Component(GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, "https://accounts.google.com/o/oauth2/auth", "https://oauth2.googleapis.com/token", "https://openid.connect/userinfo", GOOGLE_REDIRECT_URI)
 
 # In-memory storage
 if 'users' not in st.session_state:
-    st.session_state.users = {}
+    st.session_state.users = {}  # {username: {'password': pw, 'role': role, 'active': bool, 'mariner_num': str, 'credentials': str, 'picture': str, 'contact': str, 'booking_link': str, 'bio': str}}
 if 'daily_anglers' not in st.session_state:
     st.session_state.daily_anglers = []
 if 'catches' not in st.session_state:
@@ -74,74 +65,100 @@ SPECIES_OPTIONS = [
     "Other - Captain's Choice Award Entry"
 ]
 
+# Simple login/register
+if 'logged_user' not in st.session_state:
+    st.session_state.logged_user = None
+    st.session_state.role = None
+
+def register(username, password, role):
+    if username in st.session_state.users:
+        st.error("Username taken")
+        return False
+    st.session_state.users[username] = {
+        'password': password,
+        'role': role,
+        'active': True if role == "Angler/Team" else False,  # Captain inactive until credentials
+        'mariner_num': "",
+        'credentials': None,
+        'picture': None,
+        'contact': "",
+        'booking_link': "",
+        'bio': ""
+    }
+    return True
+
+def login(username, password):
+    user = st.session_state.users.get(username)
+    if user and user['password'] == password:
+        st.session_state.logged_user = username
+        st.session_state.role = user['role']
+        st.session_state.user_data = user
+        return True
+    return False
+
 # App UI
 st.set_page_config(page_title="Everyday Angler Charter Tournament", layout="wide")
-st.title("🎣 Everyday Angler Charter Tournament")
+st.image("https://via.placeholder.com/800x200?text=Everyday+Angler+Charter+Tournament+Logo", use_column_width=True)
+st.title("Everyday Angler Charter Tournament")
 
-# Google Login
-if st.query_params.get("code"):
-    result = oauth2.authorize()
-    if result.get("token"):
-        user_info = result["user_info"]
-        email = user_info["email"]
-        name = user_info["name"]
-        picture = user_info.get("picture")
-        if email not in st.session_state.users:
-            role = "Angler/Team"  # Default – can change in profile
-            st.session_state.users[email] = {
-                'name': name,
-                'email': email,
-                'picture': picture,
-                'role': role,
-                'active': False if role == "Captain" else True,
-                'contact': "",
-                'booking_link': "",
-                'bio': "",
-                'mariner_num': "",
-                'credentials': None
-            }
-        st.session_state.logged_user = email
-        st.session_state.user_data = st.session_state.users[email]
-        st.rerun()
-
-if 'logged_user' not in st.session_state:
-    st.header("Login with Google")
-    url = oauth2.get_authorize_url()
-    st.markdown(f"[Login with Google]({url})")
+if st.session_state.logged_user is None:
+    col1, col2 = st.columns(2)
+    with col1:
+        st.header("Login")
+        with st.form("login"):
+            username = st.text_input("Username")
+            password = st.text_input("Password", type="password")
+            submitted = st.form_submit_button("Login")
+            if submitted:
+                if login(username, password):
+                    st.success("Logged in!")
+                    st.rerun()
+                else:
+                    st.error("Invalid credentials")
+    with col2:
+        st.header("Register")
+        with st.form("register"):
+            new_user = st.text_input("New Username")
+            new_pass = st.text_input("New Password", type="password")
+            role = st.selectbox("Role", ["Angler/Team", "Captain"])
+            reg_sub = st.form_submit_button("Register")
+            if reg_sub:
+                if register(new_user, new_pass, role):
+                    st.success("Registered! Log in to complete your profile.")
 else:
     user_data = st.session_state.user_data = st.session_state.users[st.session_state.logged_user]
-    st.image(user_data.get("picture", "https://via.placeholder.com/150"), width=100)
-    st.success(f"Logged in as **{user_data['name']}** ({user_data['role']})")
+    st.success(f"Logged in as **{st.session_state.logged_user}** ({user_data['role']})")
     if st.button("Logout"):
         st.session_state.logged_user = None
+        st.session_state.role = None
         st.rerun()
+
+    # Captain status check
+    if user_data['role'] == "Captain" and not user_data.get('active', False):
+        st.warning("**Captain Inactive** – Upload credentials in Profile to activate and submit catches")
 
     tabs = st.tabs(["Profile", "Daily Registration" if user_data['role'] == "Angler/Team" else "Submit Catch", "Pending Approvals" if user_data['role'] == "Captain" else "Leaderboards", "Leaderboards"])
 
     with tabs[0]:
         st.header("Your Profile")
-        st.write(f"Name: {user_data['name']}")
-        st.write(f"Email: {user_data['email']}")
-        st.write(f"Role: {user_data['role']}")
-        if user_data['role'] == "Captain":
-            st.write("**Captain Status**: " + ("Active" if user_data.get('active') else "Inactive – upload credentials to activate"))
-        # Editable fields
-        user_data['contact'] = st.text_input("Contact Info (phone/email)", user_data.get('contact', ""))
-        user_data['booking_link'] = st.text_input("Booking Link", user_data.get('booking_link', ""))
-        user_data['bio'] = st.text_area("Bio/About", user_data.get('bio', ""))
-        uploaded_pic = st.file_uploader("Update Profile Picture", type=["jpg", "png"])
+        uploaded_pic = st.file_uploader("Upload Profile Picture", type=["jpg", "png"])
         if uploaded_pic:
-            user_data['picture'] = uploaded_pic.name  # In real app, upload to cloud
+            user_data['picture'] = uploaded_pic.name
+        if user_data.get('picture'):
+            st.image("https://via.placeholder.com/150?text=Profile+Pic", width=150)  # Replace with real in production
+        user_data['contact'] = st.text_input("Contact Info", user_data.get('contact', ""))
+        user_data['booking_link'] = st.text_input("Booking Link", user_data.get('booking_link', ""))
+        user_data['bio'] = st.text_area("Bio", user_data.get('bio', ""))
         if user_data['role'] == "Captain":
             user_data['mariner_num'] = st.text_input("Merchant Mariner Number", user_data.get('mariner_num', ""))
             credentials = st.file_uploader("Upload Credentials", type=["jpg", "png", "pdf"])
             if credentials:
                 user_data['credentials'] = credentials.name
                 user_data['active'] = True
-                st.success("Credentials uploaded – Captain status active!")
+                st.success("Credentials uploaded – Captain now active!")
         if st.button("Save Profile"):
             st.success("Profile updated!")
 
-    # Rest of app (daily registration, submit catch, approvals, leaderboards – same as last working version)
+    # Rest of app (daily registration, submit catch, approvals, leaderboards – same as last stable version)
 
 st.caption("Year-long tournament: Feb 1 – Nov 30, 2026 | Registration/Entry must be received before exiting the inlet | All catches require landing + weigh-in videos showing daily wristband | Tight lines!")
