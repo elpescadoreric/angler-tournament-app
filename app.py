@@ -10,8 +10,24 @@ if 'catches' not in st.session_state:
 if 'posts' not in st.session_state:
     st.session_state.posts = []
 
+# Species list
+SPECIES_OPTIONS = [
+    "King Mackerel",
+    "Spanish Mackerel",
+    "Wahoo",
+    "Dolphin/Mahi Mahi",
+    "Black Fin Tuna",
+    "Other - Captain's Choice Award Entry"
+]
+
 # Functions
-def register(username, password, role='Angler'):
+def register(username, password, confirm_password, role='Angler'):
+    if len(password) < 6:
+        st.error("Password must be at least 6 characters")
+        return False
+    if password != confirm_password:
+        st.error("Passwords do not match")
+        return False
     if username in st.session_state.users:
         st.error("Username taken")
         return False
@@ -39,8 +55,9 @@ def get_leaderboard(division):
     df = pd.DataFrame([c for c in st.session_state.catches if c['division'] == division])
     if df.empty:
         return pd.DataFrame(columns=['User', 'Species', 'Weight (lbs)', 'Date'])
+    # Sailfish +10 lb bonus
     df['adj_weight'] = df.apply(lambda row: row['weight'] + 10 if 'sailfish' in row['species'] else row['weight'], axis=1)
-    df = df.sort_values('adj_weight', descending=True)[['user', 'species', 'adj_weight', 'date']]
+    df = df.sort_values('adj_weight', ascending=False)[['user', 'species', 'adj_weight', 'date']]
     return df.rename(columns={'user': 'User', 'species': 'Species', 'adj_weight': 'Weight (lbs)', 'date': 'Date'}).head(20)
 
 def add_post(user, content):
@@ -52,7 +69,7 @@ def add_post(user, content):
 
 # App UI
 st.set_page_config(page_title="Everyday Angler Charter Tournament", layout="wide")
-st.title("Everyday Angler Charter Tournament")
+st.title("🎣 Everyday Angler Charter Tournament")
 
 if 'logged_user' not in st.session_state:
     col1, col2 = st.columns(2)
@@ -73,10 +90,11 @@ if 'logged_user' not in st.session_state:
         with st.form("register"):
             new_user = st.text_input("New Username")
             new_pass = st.text_input("New Password", type="password")
+            confirm_pass = st.text_input("Confirm Password", type="password")
             role = st.selectbox("Role", ["Angler", "Captain"])
             reg_sub = st.form_submit_button("Register")
             if reg_sub:
-                if register(new_user, new_pass, role):
+                if register(new_user, new_pass, confirm_pass, role):
                     st.success("Registered! Now log in.")
 else:
     st.success(f"Logged in as **{st.session_state.logged_user}** ({st.session_state.role})")
@@ -90,7 +108,7 @@ else:
     with tabs[0]:
         st.header("Submit Catch")
         division = st.selectbox("Division", ["Pelagic", "Reef"])
-        species = st.text_input("Species (e.g., Dolphin, Wahoo, Tuna)")
+        species = st.selectbox("Species", SPECIES_OPTIONS)
         weight = st.number_input("Weight (lbs)", min_value=0.0, step=0.1)
         if st.button("Submit Catch"):
             submit_catch(st.session_state.logged_user, division, species, weight)
