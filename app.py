@@ -58,7 +58,7 @@ def login(username, password):
         return True
     return False
 
-def submit_catch(user, division, species, weight, angler_name, captain_name, landing_video, weighin_video):
+def submit_catch(user, division, species, weight, angler_name, certifying_captain, landing_video, weighin_video):
     if landing_video and landing_video.size < 500000:
         st.error("Landing video too short – must be at least 5 seconds")
         return False
@@ -71,7 +71,7 @@ def submit_catch(user, division, species, weight, angler_name, captain_name, lan
         'species': species,
         'weight': weight,
         'angler_name': angler_name,
-        'captain_name': captain_name,
+        'certifying_captain': certifying_captain,
         'landing_video': landing_video.name if landing_video else "Missing",
         'weighin_video': weighin_video.name if weighin_video else "Missing",
         'date': datetime.now().strftime("%Y-%m-%d %H:%M")
@@ -81,16 +81,14 @@ def submit_catch(user, division, species, weight, angler_name, captain_name, lan
 def get_leaderboard(division):
     df = pd.DataFrame([c for c in st.session_state.catches if c['division'] == division])
     if df.empty:
-        return pd.DataFrame(columns=['Angler', 'Captain', 'Species', 'Weight (lbs)', 'Landing Video', 'Weigh-in Video', 'Date'])
+        return pd.DataFrame(columns=['Angler', 'Certifying Captain', 'Species', 'Weight (lbs)', 'Landing Video', 'Weigh-in Video', 'Date'])
     df['adj_weight'] = df.apply(lambda row: row['weight'] + 10 if 'sailfish' in row['species'].lower() else row['weight'], axis=1)
     df = df.sort_values('adj_weight', ascending=False)
-    # Capitalize species
     df['species'] = df['species'].str.title()
-    # Make video names clickable links (using markdown)
     df['Landing Video'] = df['landing_video'].apply(lambda x: f"[View](https://via.placeholder.com/150?text=Landing+Video+{x})" if x != "Missing" else "Missing")
     df['Weigh-in Video'] = df['weighin_video'].apply(lambda x: f"[View](https://via.placeholder.com/150?text=Weigh-in+Video+{x})" if x != "Missing" else "Missing")
-    return df[['angler_name', 'captain_name', 'species', 'adj_weight', 'Landing Video', 'Weigh-in Video', 'date']].rename(
-        columns={'angler_name': 'Angler', 'captain_name': 'Captain', 'species': 'Species', 'adj_weight': 'Weight (lbs)', 'date': 'Date'}
+    return df[['angler_name', 'certifying_captain', 'species', 'adj_weight', 'Landing Video', 'Weigh-in Video', 'date']].rename(
+        columns={'angler_name': 'Angler', 'certifying_captain': 'Certifying Captain', 'species': 'Species', 'adj_weight': 'Weight (lbs)', 'date': 'Date'}
     ).head(20)
 
 def add_post(user, content, media=None):
@@ -142,28 +140,28 @@ else:
 
     with tabs[0]:
         st.header("Submit Catch")
-        st.info("**Required**: Two videos – 1. Landing (show daily colored wristband) 2. Weigh-in (walk into scale, show full team & weight). Min 5 seconds each.")
+        st.info("**Required**: Two videos – 1. Landing (show angler with daily colored wristband) 2. Weigh-in (show at least 1 team member with daily colored wristband, walk into scale, clear weight). Min 5 seconds each.")
         with st.form("submit_catch", clear_on_submit=True):
             division = st.selectbox("Division", ["Pelagic", "Reef"])
             species = st.selectbox("Species", SPECIES_OPTIONS)
             angler_name = st.text_input("Angler Name (who caught the fish)")
-            captain_name = st.text_input("Captain Name")
+            certifying_captain = st.text_input("Certifying Captain's Name")
             weight = st.number_input("Weight (lbs)", min_value=0.0, step=0.1)
             colv1, colv2 = st.columns(2)
             with colv1:
                 landing_video = st.file_uploader("1. Landing Video (show wristband)", type=["mp4", "mov", "avi"])
             with colv2:
-                weighin_video = st.file_uploader("2. Weigh-in Video (walk into scale)", type=["mp4", "mov", "avi"])
+                weighin_video = st.file_uploader("2. Weigh-in Video (show wristband + scale)", type=["mp4", "mov", "avi"])
             submitted = st.form_submit_button("Submit Catch")
             if submitted:
-                if submit_catch(st.session_state.logged_user, division, species, weight, angler_name, captain_name, landing_video, weighin_video):
+                if submit_catch(st.session_state.logged_user, division, species, weight, angler_name, certifying_captain, landing_video, weighin_video):
                     st.success("Catch submitted successfully! Form cleared for next entry.")
 
     with tabs[1]:
         st.header("Live Leaderboards")
         div = st.selectbox("Select Division", ["Pelagic", "Reef"])
         leaderboard = get_leaderboard(div)
-        st.markdown(leaderboard.to_html(escape=False, index=False), unsafe_allow_html=True)  # Enables clickable links
+        st.markdown(leaderboard.to_html(escape=False, index=False), unsafe_allow_html=True)
 
     with tabs[2]:
         st.header("Social Feed")
