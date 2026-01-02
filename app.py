@@ -233,7 +233,7 @@ else:
     with col_submit:
         if st.session_state.role == "Captain":
             if st.button("🎣 SUBMIT CATCH", type="primary", use_container_width=True):
-                st.session_state.active_tab = "Submit Catch"
+                st.session_state.selected_tab = "Submit Catch"
                 st.rerun()
 
     # Tabs with Submit Catch as dedicated tab for Captains
@@ -241,6 +241,10 @@ else:
     if st.session_state.role == "Captain":
         tab_names.insert(1, "Submit Catch")  # Insert after My Profile
     tabs = st.tabs(tab_names)
+
+    # Select the Submit Catch tab if button was clicked
+    if st.session_state.role == "Captain" and st.session_state.get('selected_tab', "") == "Submit Catch":
+        tabs[1].select()
 
     # My Profile
     with tabs[0]:
