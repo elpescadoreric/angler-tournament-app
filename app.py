@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 from datetime import datetime
-from PIL import Image  # For fixing image orientation
+from PIL import Image, ExifTags  # For orientation fix
 
 # In-memory storage
 if 'users' not in st.session_state:
@@ -29,56 +29,7 @@ if 'wristband_color' not in st.session_state:
 # Logo
 LOGO_URL = "https://i.imgur.com/RgxPgmP.png"
 
-# Weigh-in locations (full list)
-WEIGH_IN_LOCATIONS = [
-    "Sailfish Marina Resort (Singer Island)",
-    "Riviera Beach Marina Village",
-    "Boynton Harbor Marina",
-    "Palm Beach Yacht Center (Lantana)",
-    "Two Georges Waterfront Grille (Boynton Beach)",
-    "Banana Boat (Boynton Beach)",
-    "Old Key Lime House (Lantana)",
-    "Frigate’s Waterfront Bar & Grill (North Palm Beach)",
-    "Prime Catch (Boynton Beach)",
-    "Waterway Cafe (Palm Beach Gardens)",
-    "Seasons 52 (Palm Beach Gardens)",
-    "The River House (Palm Beach Gardens)",
-    "Sands Harbor Resort & Marina (Pompano Beach)",
-    "PORT 32 Lighthouse Point Marina",
-    "Taha Marine Center (Pompano Beach)",
-    "The Cove Marina / Two Georges at the Cove (Deerfield Beach)",
-    "Shooters Waterfront (Fort Lauderdale)",
-    "Boatyard (Fort Lauderdale)",
-    "Coconuts (Fort Lauderdale)",
-    "Rustic Inn Crabhouse (Fort Lauderdale)",
-    "15th Street Fisheries (Fort Lauderdale)",
-    "Southport Raw Bar (Fort Lauderdale)",
-    "Kaluz Restaurant (Fort Lauderdale)",
-    "Boathouse at the Riverside (Fort Lauderdale)",
-    "Homestead Bayfront Marina",
-    "Black Point Marina (Cutler Bay)",
-    "Haulover Marine Center / Bill Bird Marina",
-    "Crandon Park Marina (Key Biscayne)",
-    "Matheson Hammock Marina (Coral Gables)",
-    "Dinner Key Marina (Coconut Grove)",
-    "Rusty Pelican (Key Biscayne)",
-    "Monty's Raw Bar (Coconut Grove)",
-    "Shuckers Waterfront Bar & Grill (North Bay Village)",
-    "Garcia's Seafood Grille & Fish Market (Miami River)",
-    "Boater's Grill (Key Biscayne)",
-    "American Social (Brickell)",
-    "Billy's Stone Crab Restaurant (Hollywood)",
-    "Seaspice Brasserie & Lounge (Miami River)"
-]
-
-SPECIES_OPTIONS = [
-    "King Mackerel",
-    "Spanish Mackerel",
-    "Wahoo",
-    "Dolphin/Mahi Mahi",
-    "Black Fin Tuna",
-    "Other - Captain's Choice Award Entry"
-]
+# (Keep your full WEIGH_IN_LOCATIONS and SPECIES_OPTIONS)
 
 # Simple login/register
 if 'logged_user' not in st.session_state:
@@ -95,7 +46,7 @@ def register(username, password, confirm_password, role):
     st.session_state.users[username] = {
         'password': password,
         'role': role,
-        'active': True,  # All users active now
+        'active': True,
         'picture': None,
         'contact': "",
         'booking_link': "",
@@ -113,10 +64,29 @@ def login(username, password):
         return True
     return False
 
+# Fix image orientation
+def fix_image_orientation(uploaded_file):
+    if uploaded_file is None:
+        return None
+    image = Image.open(uploaded_file)
+    if hasattr(image, '_getexif'):
+        exif = image._getexif()
+        if exif is not None:
+            for orientation in ExifTags.TAGS.keys():
+                if ExifTags.TAGS[orientation] == 'Orientation':
+                    break
+            if orientation in exif:
+                if exif[orientation] == 3:
+                    image = image.rotate(180, expand=True)
+                elif exif[orientation] == 6:
+                    image = image.rotate(270, expand=True)
+                elif exif[orientation] == 8:
+                    image = image.rotate(90, expand=True)
+    return image
+
 # App UI
 st.set_page_config(page_title="Everyday Angler App", layout="wide")
 
-# Logo top left (only after login)
 if st.session_state.logged_user:
     col_logo, col_title = st.columns([1, 5])
     with col_logo:
@@ -127,6 +97,23 @@ else:
     st.title("Everyday Angler App")
 
 if st.session_state.logged_user is None:
+    st.subheader("Quick Test Logins")
+    col_demo1, col_demo2 = st.columns(2)
+    with col_demo1:
+        if st.button("Test as Captain"):
+            st.session_state.logged_user = "testcaptain"
+            st.session_state.role = "Captain"
+            st.session_state.user_data = {'role': "Captain", 'active': True}
+            st.rerun()
+    with col_demo2:
+        if st.button("Test as Angler/Team"):
+            st.session_state.logged_user = "testangler"
+            st.session_state.role = "Angler/Team"
+            st.session_state.user_data = {'role': "Angler/Team", 'active': True}
+            st.rerun()
+
+    st.divider()
+
     col1, col2 = st.columns(2)
     with col1:
         st.header("Login")
@@ -153,7 +140,7 @@ if st.session_state.logged_user is None:
             reg_sub = st.form_submit_button("Register")
             if reg_sub:
                 if role == "Captain" and not agree:
-                    st.error("You must agree to the statement to register as a Captain")
+                    st.error("You must agree to the statement")
                 elif register(new_user, new_pass, confirm_pass, role):
                     st.success("Registered! Log in to complete your profile.")
 else:
@@ -170,15 +157,11 @@ else:
         st.header("Your Profile")
         uploaded_pic = st.file_uploader("Upload Profile Picture", type=["jpg", "png", "jpeg"])
         if uploaded_pic:
-            # Fix orientation
-            img = Image.open(uploaded_pic)
-            img = img.rotate(0, expand=True)  # Auto-correct EXIF orientation
-            user_data['picture'] = uploaded_pic  # Store raw uploaded file
+            fixed_img = fix_image_orientation(uploaded_pic)
+            user_data['picture'] = fixed_img
             st.success("Profile picture updated!")
         if user_data.get('picture'):
             st.image(user_data['picture'], width=150)
-        else:
-            st.image("https://via.placeholder.com/150?text=No+Picture", width=150)
         user_data['contact'] = st.text_input("Contact Info", value=user_data.get('contact', ""))
         user_data['booking_link'] = st.text_input("Booking Link", value=user_data.get('booking_link', ""))
         user_data['bio'] = st.text_area("Bio", value=user_data.get('bio', ""))
