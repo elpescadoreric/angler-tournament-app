@@ -1,7 +1,8 @@
 import streamlit as st
 import pandas as pd
 from datetime import datetime
-from PIL import Image, ExifTags
+import smtplib
+from email.mime.text import MIMEText
 
 # In-memory storage
 if 'users' not in st.session_state:
@@ -20,7 +21,7 @@ if 'user_events' not in st.session_state:
 if 'daily_anglers' not in st.session_state:
     st.session_state.daily_anglers = {}
 if 'catches' not in st.session_state:
-    st.session_state.catches = {}
+    st.session_state.catches = {}  # {angler: [catches]}
 if 'pending_catches' not in st.session_state:
     st.session_state.pending_catches = {}
 if 'wristband_color' not in st.session_state:
@@ -30,46 +31,7 @@ if 'wristband_color' not in st.session_state:
 LOGO_URL = "https://i.imgur.com/RgxPgmP.png"
 
 # Weigh-in locations (full list – keep yours)
-WEIGH_IN_LOCATIONS = [
-    "Sailfish Marina Resort (Singer Island)",
-    "Riviera Beach Marina Village",
-    "Boynton Harbor Marina",
-    "Palm Beach Yacht Center (Lantana)",
-    "Two Georges Waterfront Grille (Boynton Beach)",
-    "Banana Boat (Boynton Beach)",
-    "Old Key Lime House (Lantana)",
-    "Frigate’s Waterfront Bar & Grill (North Palm Beach)",
-    "Prime Catch (Boynton Beach)",
-    "Waterway Cafe (Palm Beach Gardens)",
-    "Seasons 52 (Palm Beach Gardens)",
-    "The River House (Palm Beach Gardens)",
-    "Sands Harbor Resort & Marina (Pompano Beach)",
-    "PORT 32 Lighthouse Point Marina",
-    "Taha Marine Center (Pompano Beach)",
-    "The Cove Marina / Two Georges at the Cove (Deerfield Beach)",
-    "Shooters Waterfront (Fort Lauderdale)",
-    "Boatyard (Fort Lauderdale)",
-    "Coconuts (Fort Lauderdale)",
-    "Rustic Inn Crabhouse (Fort Lauderdale)",
-    "15th Street Fisheries (Fort Lauderdale)",
-    "Southport Raw Bar (Fort Lauderdale)",
-    "Kaluz Restaurant (Fort Lauderdale)",
-    "Boathouse at the Riverside (Fort Lauderdale)",
-    "Homestead Bayfront Marina",
-    "Black Point Marina (Cutler Bay)",
-    "Haulover Marine Center / Bill Bird Marina",
-    "Crandon Park Marina (Key Biscayne)",
-    "Matheson Hammock Marina (Coral Gables)",
-    "Dinner Key Marina (Coconut Grove)",
-    "Rusty Pelican (Key Biscayne)",
-    "Monty's Raw Bar (Coconut Grove)",
-    "Shuckers Waterfront Bar & Grill (North Bay Village)",
-    "Garcia's Seafood Grille & Fish Market (Miami River)",
-    "Boater's Grill (Key Biscayne)",
-    "American Social (Brickell)",
-    "Billy's Stone Crab Restaurant (Hollywood)",
-    "Seaspice Brasserie & Lounge (Miami River)"
-]
+WEIGH_IN_LOCATIONS = [ ... ]  # Your full list
 
 SPECIES_OPTIONS = [
     "King Mackerel",
@@ -97,9 +59,8 @@ def register(username, password, confirm_password, role):
         'role': role,
         'active': True,
         'picture': None,
-        'phone': "",
-        'email': "",
-        'website': "",
+        'contact': "",
+        'booking_link': "",
         'instagram': "",
         'facebook': "",
         'tiktok': "",
@@ -119,28 +80,6 @@ def login(username, password):
         return True
     return False
 
-# Fix image orientation
-def fix_image_orientation(uploaded_file):
-    if uploaded_file is None:
-        return None
-    image = Image.open(uploaded_file)
-    try:
-        for orientation in ExifTags.TAGS.keys():
-            if ExifTags.TAGS[orientation] == 'Orientation':
-                break
-        exif = image._getexif()
-        if exif is not None:
-            if orientation in exif:
-                if exif[orientation] == 3:
-                    image = image.rotate(180, expand=True)
-                elif exif[orientation] == 6:
-                    image = image.rotate(270, expand=True)
-                elif exif[orientation] == 8:
-                    image = image.rotate(90, expand=True)
-    except:
-        pass
-    return image
-
 # App UI
 st.set_page_config(page_title="Everyday Angler App", layout="wide")
 
@@ -154,51 +93,6 @@ else:
     st.title("Everyday Angler App")
 
 if st.session_state.logged_user is None:
-    st.subheader("Quick Test Logins")
-    col_demo1, col_demo2 = st.columns(2)
-    with col_demo1:
-        if st.button("Test as Captain"):
-            st.session_state.logged_user = "testcaptain"
-            st.session_state.role = "Captain"
-            st.session_state.user_data = {
-                'role': "Captain",
-                'active': True,
-                'picture': None,
-                'phone': "",
-                'email': "",
-                'website': "",
-                'instagram': "",
-                'facebook': "",
-                'tiktok': "",
-                'youtube': "",
-                'x': "",
-                'bio': "",
-                'events': []
-            }
-            st.rerun()
-    with col_demo2:
-        if st.button("Test as Angler/Team"):
-            st.session_state.logged_user = "testangler"
-            st.session_state.role = "Angler/Team"
-            st.session_state.user_data = {
-                'role': "Angler/Team",
-                'active': True,
-                'picture': None,
-                'phone': "",
-                'email': "",
-                'website': "",
-                'instagram': "",
-                'facebook': "",
-                'tiktok': "",
-                'youtube': "",
-                'x': "",
-                'bio': "",
-                'events': []
-            }
-            st.rerun()
-
-    st.divider()
-
     col1, col2 = st.columns(2)
     with col1:
         st.header("Login")
@@ -229,7 +123,7 @@ if st.session_state.logged_user is None:
                 elif register(new_user, new_pass, confirm_pass, role):
                     st.success("Registered! Log in to complete your profile.")
 else:
-    user_data = st.session_state.user_data
+    user_data = st.session_state.user_data = st.session_state.users[st.session_state.logged_user]
     st.success(f"Logged in as **{st.session_state.logged_user}** ({user_data['role']})")
     if st.button("Logout"):
         st.session_state.logged_user = None
@@ -240,7 +134,7 @@ else:
 
     with tabs[0]:
         st.header("Your Profile")
-        uploaded_pic = st.file_uploader("Upload Profile Picture", type=["jpg", "png", "jpeg"])
+        uploaded_pic = st.file_uploader("Upload Profile Picture", type=["jpg", "png"])
         if uploaded_pic:
             fixed_img = fix_image_orientation(uploaded_pic)
             user_data['picture'] = fixed_img
@@ -251,31 +145,25 @@ else:
         user_data['email'] = st.text_input("Email Address", value=user_data.get('email', ""))
         user_data['website'] = st.text_input("Website", value=user_data.get('website', ""))
         st.subheader("Social Media")
-        col_ig, col_fb = st.columns(2)
-        with col_ig:
-            user_data['instagram'] = st.text_input("Instagram URL", value=user_data.get('instagram', ""))
-            if user_data['instagram']:
-                st.markdown(f"[![Instagram](https://upload.wikimedia.org/wikipedia/commons/thumb/a/a5/Instagram_icon.png/20px-Instagram_icon.png)]({user_data['instagram']})")
-        with col_fb:
-            user_data['facebook'] = st.text_input("Facebook URL", value=user_data.get('facebook', ""))
-            if user_data['facebook']:
-                st.markdown(f"[![Facebook](https://upload.wikimedia.org/wikipedia/commons/thumb/5/51/Facebook_f_logo_%282019%29.svg/20px-Facebook_f_logo_%282019%29.svg.png)]({user_data['facebook']})")
-        col_tt, col_yt = st.columns(2)
-        with col_tt:
-            user_data['tiktok'] = st.text_input("TikTok URL", value=user_data.get('tiktok', ""))
-            if user_data['tiktok']:
-                st.markdown(f"[![TikTok](https://upload.wikimedia.org/wikipedia/en/thumb/a/a4/TikTok_logo.svg/20px-TikTok_logo.svg.png)]({user_data['tiktok']})")
-        with col_yt:
-            user_data['youtube'] = st.text_input("YouTube URL", value=user_data.get('youtube', ""))
-            if user_data['youtube']:
-                st.markdown(f"[![YouTube](https://upload.wikimedia.org/wikipedia/commons/thumb/0/09/YouTube_full-color_icon_%282017%29.svg/20px-YouTube_full-color_icon_%282017%29.svg.png)]({user_data['youtube']})")
-        user_data['x'] = st.text_input("X (Twitter) URL", value=user_data.get('x', ""))
+        user_data['instagram'] = st.text_input("Instagram URL", value=user_data.get('instagram', ""))
+        if user_data['instagram']:
+            st.markdown(f"[![Instagram](https://upload.wikimedia.org/wikipedia/commons/thumb/a/a5/Instagram_icon.png/20px-Instagram_icon.png)]({user_data['instagram']})", unsafe_allow_html=True)
+        user_data['facebook'] = st.text_input("Facebook URL", value=user_data.get('facebook', ""))
+        if user_data['facebook']:
+            st.markdown(f"[![Facebook](https://upload.wikimedia.org/wikipedia/commons/thumb/5/51/Facebook_f_logo_%282019%29.svg/20px-Facebook_f_logo_%282019%29.svg.png)]({user_data['facebook']})", unsafe_allow_html=True)
+        user_data['tiktok'] = st.text_input("TikTok URL", value=user_data.get('tiktok', ""))
+        if user_data['tiktok']:
+            st.markdown(f"[![TikTok](https://upload.wikimedia.org/wikipedia/en/thumb/a/a4/TikTok_logo.svg/20px-TikTok_logo.svg.png)]({user_data['tiktok']})", unsafe_allow_html=True)
+        user_data['youtube'] = st.text_input("YouTube URL", value=user_data.get('youtube', ""))
+        if user_data['youtube']:
+            st.markdown(f"[![YouTube](https://upload.wikimedia.org/wikipedia/commons/thumb/0/09/YouTube_full-color_icon_%282017%29.svg/20px-YouTube_full-color_icon_%282019%29.svg.png)]({user_data['youtube']})", unsafe_allow_html=True)
+        user_data['x'] = st.text_input("X URL", value=user_data.get('x', ""))
         if user_data['x']:
-            st.markdown(f"[![X](https://upload.wikimedia.org/wikipedia/en/thumb/6/60/Twitter_bird_logo_2012.svg/20px-Twitter_bird_logo_2012.svg.png)]({user_data['x']})")
+            st.markdown(f"[![X](https://upload.wikimedia.org/wikipedia/en/thumb/6/60/Twitter_bird_logo_2012.svg/20px-Twitter_bird_logo_2012.svg.png)]({user_data['x']})", unsafe_allow_html=True)
         user_data['bio'] = st.text_area("Bio", value=user_data.get('bio', ""))
         if st.button("Save Profile"):
             st.success("Profile saved successfully!")
 
-    # Events and My Events tabs (same as before – unchanged)
+    # Events and My Events tabs (same as before)
 
 st.caption("Everyday Angler App – Your home for charter tournaments | Tight lines!")
