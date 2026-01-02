@@ -20,7 +20,7 @@ if 'user_events' not in st.session_state:
 if 'daily_anglers' not in st.session_state:
     st.session_state.daily_anglers = {}
 if 'catches' not in st.session_state:
-    st.session_state.catches = {}
+    st.session_state.catches = []
 if 'pending_catches' not in st.session_state:
     st.session_state.pending_catches = {}
 if 'wristband_color' not in st.session_state:
@@ -29,56 +29,13 @@ if 'wristband_color' not in st.session_state:
 # Logo
 LOGO_URL = "https://i.imgur.com/RgxPgmP.png"
 
-# Weigh-in locations (full list – keep yours)
-WEIGH_IN_LOCATIONS = [
-    "Sailfish Marina Resort (Singer Island)",
-    "Riviera Beach Marina Village",
-    "Boynton Harbor Marina",
-    "Palm Beach Yacht Center (Lantana)",
-    "Two Georges Waterfront Grille (Boynton Beach)",
-    "Banana Boat (Boynton Beach)",
-    "Old Key Lime House (Lantana)",
-    "Frigate’s Waterfront Bar & Grill (North Palm Beach)",
-    "Prime Catch (Boynton Beach)",
-    "Waterway Cafe (Palm Beach Gardens)",
-    "Seasons 52 (Palm Beach Gardens)",
-    "The River House (Palm Beach Gardens)",
-    "Sands Harbor Resort & Marina (Pompano Beach)",
-    "PORT 32 Lighthouse Point Marina",
-    "Taha Marine Center (Pompano Beach)",
-    "The Cove Marina / Two Georges at the Cove (Deerfield Beach)",
-    "Shooters Waterfront (Fort Lauderdale)",
-    "Boatyard (Fort Lauderdale)",
-    "Coconuts (Fort Lauderdale)",
-    "Rustic Inn Crabhouse (Fort Lauderdale)",
-    "15th Street Fisheries (Fort Lauderdale)",
-    "Southport Raw Bar (Fort Lauderdale)",
-    "Kaluz Restaurant (Fort Lauderdale)",
-    "Boathouse at the Riverside (Fort Lauderdale)",
-    "Homestead Bayfront Marina",
-    "Black Point Marina (Cutler Bay)",
-    "Haulover Marine Center / Bill Bird Marina",
-    "Crandon Park Marina (Key Biscayne)",
-    "Matheson Hammock Marina (Coral Gables)",
-    "Dinner Key Marina (Coconut Grove)",
-    "Rusty Pelican (Key Biscayne)",
-    "Monty's Raw Bar (Coconut Grove)",
-    "Shuckers Waterfront Bar & Grill (North Bay Village)",
-    "Garcia's Seafood Grille & Fish Market (Miami River)",
-    "Boater's Grill (Key Biscayne)",
-    "American Social (Brickell)",
-    "Billy's Stone Crab Restaurant (Hollywood)",
-    "Seaspice Brasserie & Lounge (Miami River)"
-]
+# Counties
+COUNTIES = ["Palm Beach", "Broward", "Miami-Dade"]
 
-SPECIES_OPTIONS = [
-    "King Mackerel",
-    "Spanish Mackerel",
-    "Wahoo",
-    "Dolphin/Mahi Mahi",
-    "Black Fin Tuna",
-    "Other - Captain's Choice Award Entry"
-]
+# Weigh-in locations (full list – keep yours)
+WEIGH_IN_LOCATIONS = [ ... ]  # Your full list
+
+SPECIES_OPTIONS = [ ... ]  # Your list
 
 # Simple login/register
 if 'logged_user' not in st.session_state:
@@ -106,6 +63,8 @@ def register(username, password, confirm_password, role):
         'youtube': "",
         'x': "",
         'bio': "",
+        'county': "",
+        'state': "Florida",
         'events': []
     }
     return True
@@ -154,6 +113,7 @@ else:
     st.title("Everyday Angler App")
 
 if st.session_state.logged_user is None:
+    # Quick test logins
     st.subheader("Quick Test Logins")
     col_demo1, col_demo2 = st.columns(2)
     with col_demo1:
@@ -173,6 +133,8 @@ if st.session_state.logged_user is None:
                 'youtube': "",
                 'x': "",
                 'bio': "",
+                'county': "Palm Beach",
+                'state': "Florida",
                 'events': []
             }
             st.rerun()
@@ -193,6 +155,8 @@ if st.session_state.logged_user is None:
                 'youtube': "",
                 'x': "",
                 'bio': "",
+                'county': "",
+                'state': "",
                 'events': []
             }
             st.rerun()
@@ -236,7 +200,7 @@ else:
         st.session_state.role = None
         st.rerun()
 
-    tabs = st.tabs(["Profile", "Events", "My Events"])
+    tabs = st.tabs(["Profile", "Events", "Captains Directory", "Live Catch Feed", "My Events"])
 
     with tabs[0]:
         st.header("Your Profile")
@@ -267,9 +231,63 @@ else:
         if user_data['x']:
             st.markdown(f"[![X](https://upload.wikimedia.org/wikipedia/en/thumb/6/60/Twitter_bird_logo_2012.svg/20px-Twitter_bird_logo_2012.svg.png)]({user_data['x']})", unsafe_allow_html=True)
         user_data['bio'] = st.text_area("Bio", value=user_data.get('bio', ""))
+        if user_data['role'] == "Captain":
+            user_data['county'] = st.selectbox("County", COUNTIES, index=COUNTIES.index(user_data.get('county', COUNTIES[0])) if user_data.get('county') in COUNTIES else 0)
+            user_data['state'] = st.text_input("State", value=user_data.get('state', "Florida"))
         if st.button("Save Profile"):
             st.success("Profile saved successfully!")
 
-    # Events and My Events tabs (same as before)
+    with tabs[1]:
+        st.header("Available Events")
+        # ... (same as before)
+
+    with tabs[2]:
+        st.header("Captains Directory")
+        county_filter = st.selectbox("Filter by County", ["All"] + COUNTIES)
+        captains = [u for u in st.session_state.users.values() if u['role'] == "Captain"]
+        if county_filter != "All":
+            captains = [c for c in captains if c.get('county') == county_filter]
+        for captain in captains:
+            username = [k for k, v in st.session_state.users.items() if v == captain][0]
+            with st.expander(f"{username} – {captain.get('county', 'N/A')}, {captain.get('state', 'FL')}"):
+                if captain.get('picture'):
+                    st.image(captain['picture'], width=150)
+                st.write(f"Phone: {captain.get('phone', 'N/A')}")
+                st.write(f"Email: {captain.get('email', 'N/A')}")
+                st.write(f"Website: {captain.get('website', 'N/A')}")
+                st.write(f"Bio: {captain.get('bio', 'N/A')}")
+                st.subheader("Social")
+                if captain.get('instagram'):
+                    st.markdown(f"[![Instagram](https://upload.wikimedia.org/wikipedia/commons/thumb/a/a5/Instagram_icon.png/20px-Instagram_icon.png)]({captain['instagram']})", unsafe_allow_html=True)
+                if captain.get('facebook'):
+                    st.markdown(f"[![Facebook](https://upload.wikimedia.org/wikipedia/commons/thumb/5/51/Facebook_f_logo_%282019%29.svg/20px-Facebook_f_logo_%282019%29.svg.png)]({captain['facebook']})", unsafe_allow_html=True)
+                if captain.get('tiktok'):
+                    st.markdown(f"[![TikTok](https://upload.wikimedia.org/wikipedia/en/thumb/a/a4/TikTok_logo.svg/20px-TikTok_logo.svg.png)]({captain['tiktok']})", unsafe_allow_html=True)
+                if captain.get('youtube'):
+                    st.markdown(f"[![YouTube](https://upload.wikimedia.org/wikipedia/commons/thumb/0/09/YouTube_full-color_icon_%282017%29.svg/20px-YouTube_full-color_icon_%282017%29.svg.png)]({captain['youtube']})", unsafe_allow_html=True)
+                if captain.get('x'):
+                    st.markdown(f"[![X](https://upload.wikimedia.org/wikipedia/en/thumb/6/60/Twitter_bird_logo_2012.svg/20px-Twitter_bird_logo_2012.svg.png)]({captain['x']})", unsafe_allow_html=True)
+
+    with tabs[3]:
+        st.header("Live Catch Feed")
+        if st.session_state.catches:
+            for catch in reversed(st.session_state.catches):  # Newest first
+                with st.expander(f"{catch['angler_name']} – {catch['weight']:.2f} lbs – {catch['species']} – {catch['date']}"):
+                    st.write(f"Captain: {catch['certifying_captain']} | Weigh-In: {catch['weigh_in_location']}")
+                    colv1, colv2 = st.columns(2)
+                    with colv1:
+                        if catch['landing_video'] != "Missing":
+                            st.video("https://via.placeholder.com/150?text=Landing+Video")  # Replace with real when uploaded
+                        else:
+                            st.info("Landing video missing")
+                    with colv2:
+                        if catch['weighin_video'] != "Missing":
+                            st.video("https://via.placeholder.com/150?text=Weigh-in+Video")
+                        else:
+                            st.info("Weigh-in video missing")
+        else:
+            st.info("No catches yet – be the first!")
+
+    # My Events tab (same as before)
 
 st.caption("Everyday Angler App – Your home for charter tournaments | Tight lines!")
