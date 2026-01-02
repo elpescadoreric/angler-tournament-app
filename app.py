@@ -2,6 +2,8 @@ import streamlit as st
 import pandas as pd
 from datetime import datetime
 from PIL import Image, ExifTags
+import smtplib
+from email.mime.text import MIMEText
 
 # In-memory storage
 if 'users' not in st.session_state:
@@ -20,65 +22,39 @@ if 'user_events' not in st.session_state:
 if 'daily_anglers' not in st.session_state:
     st.session_state.daily_anglers = {}
 if 'catches' not in st.session_state:
-    st.session_state.catches = []
+    st.session_state.catches = {}  # {event: [approved catches]}
 if 'pending_catches' not in st.session_state:
-    st.session_state.pending_catches = {}
+    st.session_state.pending_catches = {}  # {event: [pending]}
 if 'wristband_color' not in st.session_state:
     st.session_state.wristband_color = {"Everyday Angler Charter Tournament": "Red"}
 
 # Logo
 LOGO_URL = "https://i.imgur.com/RgxPgmP.png"
 
-# Weigh-in locations (full list)
-WEIGH_IN_LOCATIONS = [
-    "Sailfish Marina Resort (Singer Island)",
-    "Riviera Beach Marina Village",
-    "Boynton Harbor Marina",
-    "Palm Beach Yacht Center (Lantana)",
-    "Two Georges Waterfront Grille (Boynton Beach)",
-    "Banana Boat (Boynton Beach)",
-    "Old Key Lime House (Lantana)",
-    "Frigate’s Waterfront Bar & Grill (North Palm Beach)",
-    "Prime Catch (Boynton Beach)",
-    "Waterway Cafe (Palm Beach Gardens)",
-    "Seasons 52 (Palm Beach Gardens)",
-    "The River House (Palm Beach Gardens)",
-    "Sands Harbor Resort & Marina (Pompano Beach)",
-    "PORT 32 Lighthouse Point Marina",
-    "Taha Marine Center (Pompano Beach)",
-    "The Cove Marina / Two Georges at the Cove (Deerfield Beach)",
-    "Shooters Waterfront (Fort Lauderdale)",
-    "Boatyard (Fort Lauderdale)",
-    "Coconuts (Fort Lauderdale)",
-    "Rustic Inn Crabhouse (Fort Lauderdale)",
-    "15th Street Fisheries (Fort Lauderdale)",
-    "Southport Raw Bar (Fort Lauderdale)",
-    "Kaluz Restaurant (Fort Lauderdale)",
-    "Boathouse at the Riverside (Fort Lauderdale)",
-    "Homestead Bayfront Marina",
-    "Black Point Marina (Cutler Bay)",
-    "Haulover Marine Center / Bill Bird Marina",
-    "Crandon Park Marina (Key Biscayne)",
-    "Matheson Hammock Marina (Coral Gables)",
-    "Dinner Key Marina (Coconut Grove)",
-    "Rusty Pelican (Key Biscayne)",
-    "Monty's Raw Bar (Coconut Grove)",
-    "Shuckers Waterfront Bar & Grill (North Bay Village)",
-    "Garcia's Seafood Grille & Fish Market (Miami River)",
-    "Boater's Grill (Key Biscayne)",
-    "American Social (Brickell)",
-    "Billy's Stone Crab Restaurant (Hollywood)",
-    "Seaspice Brasserie & Lounge (Miami River)"
-]
+# Weigh-in locations (full list – your list)
+WEIGH_IN_LOCATIONS = WEIGH_IN_LOCATIONS  # Keep your full list
 
-SPECIES_OPTIONS = [
-    "King Mackerel",
-    "Spanish Mackerel",
-    "Wahoo",
-    "Dolphin/Mahi Mahi",
-    "Black Fin Tuna",
-    "Other - Captain's Choice Award Entry"
-]
+# Species options
+SPECIES_OPTIONS = SPECIES_OPTIONS  # Keep your list
+
+# Email setup (for review notifications)
+EMAIL_ADDRESS = "elpescadoreric@gmail.com"
+EMAIL_PASSWORD = st.secrets.get('EMAIL_PASSWORD', 'test_password')  # Add to secrets for real sending
+
+def send_email(to_email, subject, body):
+    try:
+        msg = MIMEText(body)
+        msg['Subject'] = subject
+        msg['From'] = EMAIL_ADDRESS
+        msg['To'] = to_email
+
+        with smtplib.SMTP_SSL('smtp.gmail.com', 465) as smtp:
+            smtp.login(EMAIL_ADDRESS, EMAIL_PASSWORD)
+            smtp.send_message(msg)
+        return True
+    except Exception as e:
+        st.error(f"Email send error: {str(e)} (Test mode)")
+        return False
 
 # Simple login/register
 if 'logged_user' not in st.session_state:
@@ -106,7 +82,8 @@ def register(username, password, confirm_password, role):
         'youtube': "",
         'x': "",
         'bio': "",
-        'events': []
+        'events': [],
+        'catches': []  # List of approved catches for this user
     }
     return True
 
@@ -118,28 +95,6 @@ def login(username, password):
         st.session_state.user_data = user
         return True
     return False
-
-# Fix image orientation
-def fix_image_orientation(uploaded_file):
-    if uploaded_file is None:
-        return None
-    image = Image.open(uploaded_file)
-    try:
-        for orientation in ExifTags.TAGS.keys():
-            if ExifTags.TAGS[orientation] == 'Orientation':
-                break
-        exif = image._getexif()
-        if exif is not None:
-            if orientation in exif:
-                if exif[orientation] == 3:
-                    image = image.rotate(180, expand=True)
-                elif exif[orientation] == 6:
-                    image = image.rotate(270, expand=True)
-                elif exif[orientation] == 8:
-                    image = image.rotate(90, expand=True)
-    except:
-        pass
-    return image
 
 # App UI
 st.set_page_config(page_title="Everyday Angler App", layout="wide")
@@ -164,16 +119,20 @@ if st.session_state.logged_user is None:
                 'role': "Captain",
                 'active': True,
                 'picture': None,
-                'phone': "",
-                'email': "",
-                'website': "",
-                'instagram': "",
-                'facebook': "",
-                'tiktok': "",
-                'youtube': "",
-                'x': "",
-                'bio': "",
-                'events': []
+                'phone': "123-456-7890",
+                'email': "testcaptain@example.com",
+                'website': "www.testcaptain.com",
+                'instagram': "https://instagram.com/testcaptain",
+                'facebook': "https://facebook.com/testcaptain",
+                'tiktok': "https://tiktok.com/@testcaptain",
+                'youtube': "https://youtube.com/testcaptain",
+                'x': "https://x.com/testcaptain",
+                'bio': "Experienced captain in Palm Beach. Specializing in offshore fishing.",
+                'events': ["Everyday Angler Charter Tournament"],
+                'catches': [
+                    {'species': 'Dolphin/Mahi Mahi', 'weight': 25.5, 'date': '2026-01-02'},
+                    {'species': 'Wahoo', 'weight': 30.0, 'date': '2026-01-02'}
+                ]
             }
             st.rerun()
     with col_demo2:
@@ -184,16 +143,19 @@ if st.session_state.logged_user is None:
                 'role': "Angler/Team",
                 'active': True,
                 'picture': None,
-                'phone': "",
-                'email': "",
+                'phone': "987-654-3210",
+                'email': "testangler@example.com",
                 'website': "",
                 'instagram': "",
                 'facebook': "",
                 'tiktok': "",
                 'youtube': "",
                 'x': "",
-                'bio': "",
-                'events': []
+                'bio': "Enthusiastic angler team from Broward.",
+                'events': ["Everyday Angler Charter Tournament"],
+                'catches': [
+                    {'species': 'King Mackerel', 'weight': 15.0, 'date': '2026-01-02'}
+                ]
             }
             st.rerun()
 
@@ -236,62 +198,8 @@ else:
         st.session_state.role = None
         st.rerun()
 
-    # High-visibility Submit Catch button top left (only for Captains)
-    col_submit, col_spacer = st.columns([1, 5])
-    with col_submit:
-        if st.session_state.role == "Captain":
-            if st.button("🎣 SUBMIT CATCH", type="primary", use_container_width=True):
-                st.session_state.show_submit_form = True
-                st.rerun()
-
     tabs = st.tabs(["My Profile", "Live Catch Feed", "Captains Directory", "Events", "My Events"])
 
-    # Submit Catch form (only for Captains, shown when button clicked)
-    if st.session_state.role == "Captain" and st.session_state.get('show_submit_form', False):
-        st.header("Submit Catch")
-        st.info(f"Today's wristband color: **{st.session_state.wristband_color.get('Everyday Angler Charter Tournament', 'Red')}**")
-        with st.form("submit_catch", clear_on_submit=True):
-            division = st.selectbox("Division", ["Pelagic", "Reef"])
-            species = st.selectbox("Species", SPECIES_OPTIONS)
-            angler_name = st.selectbox("Angler/Team Name", st.session_state.daily_anglers or ["No registration yet"])
-            certifying_captain = st.text_input("Certifying Captain", value=st.session_state.logged_user, disabled=True)
-            weight = st.number_input("Weight (lbs)", min_value=0.0, step=0.1)
-            weigh_in_location = st.selectbox("Weigh-In Location", WEIGH_IN_LOCATIONS)
-            colv1, colv2 = st.columns(2)
-            with colv1:
-                landing_video = st.file_uploader("Landing Video (show wristband)", type=["mp4", "mov"])
-            with colv2:
-                weighin_video = st.file_uploader("Weigh-in Video (show wristband + scale)", type=["mp4", "mov"])
-            confirm_password = st.text_input("Re-enter password to confirm", type="password")
-            submitted = st.form_submit_button("Submit Catch")
-            if submitted:
-                if angler_name == "No registration yet":
-                    st.error("Angler must register first")
-                elif certifying_captain != st.session_state.logged_user:
-                    st.error("Certifying Captain must be you")
-                elif st.session_state.users[st.session_state.logged_user]['password'] != confirm_password:
-                    st.error("Password incorrect")
-                elif landing_video and landing_video.size < 500000:
-                    st.error("Landing video too short")
-                elif weighin_video and weighin_video.size < 500000:
-                    st.error("Weigh-in video too short")
-                else:
-                    st.session_state.catches.append({
-                        'captain': st.session_state.logged_user,
-                        'angler': angler_name,
-                        'division': division,
-                        'species': species,
-                        'weight': weight,
-                        'weigh_in': weigh_in_location,
-                        'landing_video': landing_video.name if landing_video else "Missing",
-                        'weighin_video': weighin_video.name if weighin_video else "Missing",
-                        'date': datetime.now().strftime("%Y-%m-%d")
-                    })
-                    st.success("Catch submitted successfully!")
-                    st.session_state.show_submit_form = False
-                    st.rerun()
-
-    # My Profile
     with tabs[0]:
         st.header("Your Profile")
         uploaded_pic = st.file_uploader("Upload Profile Picture", type=["jpg", "png", "jpeg"])
