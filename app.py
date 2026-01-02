@@ -26,6 +26,9 @@ if 'pending_catches' not in st.session_state:
 if 'wristband_color' not in st.session_state:
     st.session_state.wristband_color = {"Everyday Angler Charter Tournament": "Red"}
 
+# Counties (defined early to avoid NameError)
+COUNTIES = ["Palm Beach", "Broward", "Miami-Dade"]
+
 # Logo
 LOGO_URL = "https://i.imgur.com/RgxPgmP.png"
 
