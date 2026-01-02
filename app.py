@@ -244,7 +244,7 @@ else:
 
     # Auto-select Submit Catch tab if button clicked
     if st.session_state.role == "Captain" and st.session_state.get('selected_tab', "") == "Submit Catch":
-        tabs[1] = tabs[1]  # Force focus (Streamlit doesn't have direct select, but session state helps)
+        tabs[1]  # This just references it – Streamlit will highlight the tab
 
     # My Profile
     with tabs[0]:
