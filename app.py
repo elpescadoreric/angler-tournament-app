@@ -144,21 +144,8 @@ def fix_image_orientation(uploaded_file):
 # App UI
 st.set_page_config(page_title="Everyday Angler App", layout="wide")
 
-# Eye-catching title top left (no logo)
-st.markdown("""
-<style>
-    .big-title {
-        font-size: 3rem !important;
-        font-weight: bold !important;
-        color: #00BFFF !important;  /* Deep sky blue – fishing vibe */
-        text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
-        margin-top: 0 !important;
-        padding-top: 20px;
-    }
-</style>
-""", unsafe_allow_html=True)
-
-st.markdown('<h1 class="big-title">Everyday Angler App</h1>', unsafe_allow_html=True)
+# Title top left (no logo)
+st.markdown('<h1 style="font-size: 3rem; font-weight: bold; color: #00BFFF; text-shadow: 2px 2px 4px rgba(0,0,0,0.5); margin-top: 0; padding-top: 20px;">Everyday Angler App</h1>', unsafe_allow_html=True)
 
 if st.session_state.logged_user is None:
     st.subheader("Quick Test Logins")
