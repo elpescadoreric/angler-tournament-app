@@ -29,7 +29,7 @@ if 'wristband_color' not in st.session_state:
 # Logo
 LOGO_URL = "https://i.imgur.com/RgxPgmP.png"
 
-# Weigh-in locations (full list)
+# Weigh-in locations (full list – keep yours)
 WEIGH_IN_LOCATIONS = [
     "Sailfish Marina Resort (Singer Island)",
     "Riviera Beach Marina Village",
@@ -97,8 +97,14 @@ def register(username, password, confirm_password, role):
         'role': role,
         'active': True,
         'picture': None,
-        'contact': "",
-        'booking_link': "",
+        'phone': "",
+        'email': "",
+        'website': "",
+        'instagram': "",
+        'facebook': "",
+        'tiktok': "",
+        'youtube': "",
+        'x': "",
         'bio': "",
         'events': []
     }
@@ -158,8 +164,14 @@ if st.session_state.logged_user is None:
                 'role': "Captain",
                 'active': True,
                 'picture': None,
-                'contact': "",
-                'booking_link': "",
+                'phone': "",
+                'email': "",
+                'website': "",
+                'instagram': "",
+                'facebook': "",
+                'tiktok': "",
+                'youtube': "",
+                'x': "",
                 'bio': "",
                 'events': []
             }
@@ -172,8 +184,14 @@ if st.session_state.logged_user is None:
                 'role': "Angler/Team",
                 'active': True,
                 'picture': None,
-                'contact': "",
-                'booking_link': "",
+                'phone': "",
+                'email': "",
+                'website': "",
+                'instagram': "",
+                'facebook': "",
+                'tiktok': "",
+                'youtube': "",
+                'x': "",
                 'bio': "",
                 'events': []
             }
@@ -229,12 +247,35 @@ else:
             st.success("Profile picture updated!")
         if user_data.get('picture'):
             st.image(user_data['picture'], width=150)
-        user_data['contact'] = st.text_input("Contact Info", value=user_data.get('contact', ""))
-        user_data['booking_link'] = st.text_input("Booking Link", value=user_data.get('booking_link', ""))
+        user_data['phone'] = st.text_input("Phone Number", value=user_data.get('phone', ""))
+        user_data['email'] = st.text_input("Email Address", value=user_data.get('email', ""))
+        user_data['website'] = st.text_input("Website", value=user_data.get('website', ""))
+        st.subheader("Social Media")
+        col_ig, col_fb = st.columns(2)
+        with col_ig:
+            user_data['instagram'] = st.text_input("Instagram URL", value=user_data.get('instagram', ""))
+            if user_data['instagram']:
+                st.markdown(f"[![Instagram](https://upload.wikimedia.org/wikipedia/commons/thumb/a/a5/Instagram_icon.png/20px-Instagram_icon.png)]({user_data['instagram']})")
+        with col_fb:
+            user_data['facebook'] = st.text_input("Facebook URL", value=user_data.get('facebook', ""))
+            if user_data['facebook']:
+                st.markdown(f"[![Facebook](https://upload.wikimedia.org/wikipedia/commons/thumb/5/51/Facebook_f_logo_%282019%29.svg/20px-Facebook_f_logo_%282019%29.svg.png)]({user_data['facebook']})")
+        col_tt, col_yt = st.columns(2)
+        with col_tt:
+            user_data['tiktok'] = st.text_input("TikTok URL", value=user_data.get('tiktok', ""))
+            if user_data['tiktok']:
+                st.markdown(f"[![TikTok](https://upload.wikimedia.org/wikipedia/en/thumb/a/a4/TikTok_logo.svg/20px-TikTok_logo.svg.png)]({user_data['tiktok']})")
+        with col_yt:
+            user_data['youtube'] = st.text_input("YouTube URL", value=user_data.get('youtube', ""))
+            if user_data['youtube']:
+                st.markdown(f"[![YouTube](https://upload.wikimedia.org/wikipedia/commons/thumb/0/09/YouTube_full-color_icon_%282017%29.svg/20px-YouTube_full-color_icon_%282017%29.svg.png)]({user_data['youtube']})")
+        user_data['x'] = st.text_input("X (Twitter) URL", value=user_data.get('x', ""))
+        if user_data['x']:
+            st.markdown(f"[![X](https://upload.wikimedia.org/wikipedia/en/thumb/6/60/Twitter_bird_logo_2012.svg/20px-Twitter_bird_logo_2012.svg.png)]({user_data['x']})")
         user_data['bio'] = st.text_area("Bio", value=user_data.get('bio', ""))
         if st.button("Save Profile"):
             st.success("Profile saved successfully!")
 
-    # Events and My Events tabs (same as before)
+    # Events and My Events tabs (same as before – unchanged)
 
 st.caption("Everyday Angler App – Your home for charter tournaments | Tight lines!")
