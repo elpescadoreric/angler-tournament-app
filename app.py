@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 from datetime import datetime
-from PIL import Image, ExifTags  # For orientation fix
+from PIL import Image, ExifTags
 
 # In-memory storage
 if 'users' not in st.session_state:
@@ -29,7 +29,56 @@ if 'wristband_color' not in st.session_state:
 # Logo
 LOGO_URL = "https://i.imgur.com/RgxPgmP.png"
 
-# (Keep your full WEIGH_IN_LOCATIONS and SPECIES_OPTIONS)
+# Weigh-in locations (full list)
+WEIGH_IN_LOCATIONS = [
+    "Sailfish Marina Resort (Singer Island)",
+    "Riviera Beach Marina Village",
+    "Boynton Harbor Marina",
+    "Palm Beach Yacht Center (Lantana)",
+    "Two Georges Waterfront Grille (Boynton Beach)",
+    "Banana Boat (Boynton Beach)",
+    "Old Key Lime House (Lantana)",
+    "Frigate’s Waterfront Bar & Grill (North Palm Beach)",
+    "Prime Catch (Boynton Beach)",
+    "Waterway Cafe (Palm Beach Gardens)",
+    "Seasons 52 (Palm Beach Gardens)",
+    "The River House (Palm Beach Gardens)",
+    "Sands Harbor Resort & Marina (Pompano Beach)",
+    "PORT 32 Lighthouse Point Marina",
+    "Taha Marine Center (Pompano Beach)",
+    "The Cove Marina / Two Georges at the Cove (Deerfield Beach)",
+    "Shooters Waterfront (Fort Lauderdale)",
+    "Boatyard (Fort Lauderdale)",
+    "Coconuts (Fort Lauderdale)",
+    "Rustic Inn Crabhouse (Fort Lauderdale)",
+    "15th Street Fisheries (Fort Lauderdale)",
+    "Southport Raw Bar (Fort Lauderdale)",
+    "Kaluz Restaurant (Fort Lauderdale)",
+    "Boathouse at the Riverside (Fort Lauderdale)",
+    "Homestead Bayfront Marina",
+    "Black Point Marina (Cutler Bay)",
+    "Haulover Marine Center / Bill Bird Marina",
+    "Crandon Park Marina (Key Biscayne)",
+    "Matheson Hammock Marina (Coral Gables)",
+    "Dinner Key Marina (Coconut Grove)",
+    "Rusty Pelican (Key Biscayne)",
+    "Monty's Raw Bar (Coconut Grove)",
+    "Shuckers Waterfront Bar & Grill (North Bay Village)",
+    "Garcia's Seafood Grille & Fish Market (Miami River)",
+    "Boater's Grill (Key Biscayne)",
+    "American Social (Brickell)",
+    "Billy's Stone Crab Restaurant (Hollywood)",
+    "Seaspice Brasserie & Lounge (Miami River)"
+]
+
+SPECIES_OPTIONS = [
+    "King Mackerel",
+    "Spanish Mackerel",
+    "Wahoo",
+    "Dolphin/Mahi Mahi",
+    "Black Fin Tuna",
+    "Other - Captain's Choice Award Entry"
+]
 
 # Simple login/register
 if 'logged_user' not in st.session_state:
@@ -69,12 +118,12 @@ def fix_image_orientation(uploaded_file):
     if uploaded_file is None:
         return None
     image = Image.open(uploaded_file)
-    if hasattr(image, '_getexif'):
+    try:
+        for orientation in ExifTags.TAGS.keys():
+            if ExifTags.TAGS[orientation] == 'Orientation':
+                break
         exif = image._getexif()
         if exif is not None:
-            for orientation in ExifTags.TAGS.keys():
-                if ExifTags.TAGS[orientation] == 'Orientation':
-                    break
             if orientation in exif:
                 if exif[orientation] == 3:
                     image = image.rotate(180, expand=True)
@@ -82,6 +131,8 @@ def fix_image_orientation(uploaded_file):
                     image = image.rotate(270, expand=True)
                 elif exif[orientation] == 8:
                     image = image.rotate(90, expand=True)
+    except:
+        pass
     return image
 
 # App UI
@@ -103,13 +154,29 @@ if st.session_state.logged_user is None:
         if st.button("Test as Captain"):
             st.session_state.logged_user = "testcaptain"
             st.session_state.role = "Captain"
-            st.session_state.user_data = {'role': "Captain", 'active': True}
+            st.session_state.user_data = {
+                'role': "Captain",
+                'active': True,
+                'picture': None,
+                'contact': "",
+                'booking_link': "",
+                'bio': "",
+                'events': []
+            }
             st.rerun()
     with col_demo2:
         if st.button("Test as Angler/Team"):
             st.session_state.logged_user = "testangler"
             st.session_state.role = "Angler/Team"
-            st.session_state.user_data = {'role': "Angler/Team", 'active': True}
+            st.session_state.user_data = {
+                'role': "Angler/Team",
+                'active': True,
+                'picture': None,
+                'contact': "",
+                'booking_link': "",
+                'bio': "",
+                'events': []
+            }
             st.rerun()
 
     st.divider()
@@ -144,7 +211,7 @@ if st.session_state.logged_user is None:
                 elif register(new_user, new_pass, confirm_pass, role):
                     st.success("Registered! Log in to complete your profile.")
 else:
-    user_data = st.session_state.user_data = st.session_state.users[st.session_state.logged_user]
+    user_data = st.session_state.user_data
     st.success(f"Logged in as **{st.session_state.logged_user}** ({user_data['role']})")
     if st.button("Logout"):
         st.session_state.logged_user = None
