@@ -240,8 +240,8 @@ else:
         # Username header
         st.header(st.session_state.logged_user)
 
-        # Centered profile picture section
-        col_center = st.columns([1, 2, 1])[1]
+        # Centered profile picture and related elements
+        col_center = st.columns([1, 3, 1])[1]
         with col_center:
             uploaded_pic = None
             if user_data.get('picture') is None:
@@ -257,10 +257,8 @@ else:
                 st.success("Profile picture updated!")
                 st.rerun()
 
-        # City/State centered below picture (for Captains)
-        if user_data['role'] == "Captain":
-            col_city_state = st.columns([1, 2, 1])[1]
-            with col_city_state:
+            # City/State below picture (for Captains)
+            if user_data['role'] == "Captain":
                 st.subheader(f"{user_data.get('city', '')}, {user_data.get('state', '')}")
 
         # Rest of profile fields
