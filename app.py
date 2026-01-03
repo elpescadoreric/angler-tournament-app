@@ -228,18 +228,10 @@ else:
         st.session_state.role = None
         st.rerun()
 
-    # High-visibility Submit Catch button top left (only for Captains)
-    col_submit, col_spacer = st.columns([1, 5])
-    with col_submit:
-        if st.session_state.role == "Captain":
-            if st.button("🎣 SUBMIT CATCH", type="primary", use_container_width=True):
-                st.session_state.selected_tab = "Submit Catch"
-                st.rerun()
-
-    # Tabs with Submit Catch as dedicated tab for Captains
+    # Tabs with Submit Catch tab only for Captains
     tab_names = ["My Profile", "Live Catch Feed", "Captains Directory", "Events", "My Events"]
     if st.session_state.role == "Captain":
-        tab_names.insert(1, "Submit Catch")  # Insert after My Profile
+        tab_names.insert(1, "Submit Catch")
     tabs = st.tabs(tab_names)
 
     # My Profile
