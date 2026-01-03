@@ -237,10 +237,10 @@ else:
     tabs = st.tabs(["My Profile", "Live Catch Feed", "Captains Directory", "Events", "My Events"])
 
     with tabs[0]:
-        st.header("Your Profile")
+        st.header(st.session_state.logged_user)  # Header is now the username
 
-        # Profile picture centered
-        col_pic = st.columns([1, 2, 1])[1]  # Center column
+        # Centered profile picture
+        col_pic = st.columns([1, 2, 1])[1]
         with col_pic:
             uploaded_pic = None
             if user_data.get('picture') is None:
@@ -256,11 +256,11 @@ else:
                 st.success("Profile picture updated!")
                 st.rerun()
 
-        # City/State next to picture (for Captains)
+        # City, State next to picture (for Captains)
         if user_data['role'] == "Captain":
-            col_city = st.columns([1, 2, 1])[1]
-            with col_city:
-                st.subheader(f"{user_data.get('city', '')}, {user_data.get('state', '')}")
+            col_city_state = st.columns([1, 2, 1])[1]
+            with col_city_state:
+                st.subheader(f"{user_data.get('city', 'N/A')}, {user_data.get('state', 'N/A')}")
 
         # Rest of profile fields
         user_data['phone'] = st.text_input("Phone Number", value=user_data.get('phone', ""))
@@ -292,6 +292,6 @@ else:
         if st.button("Save Profile"):
             st.success("Profile saved successfully!")
 
-    # Other tabs (Live Catch Feed, Captains Directory, Events, My Events) – same as before
+    # Other tabs (Live Catch Feed, Captains Directory, Events, My Events) – unchanged
 
 st.caption("Everyday Angler App – Your home for charter tournaments | Tight lines!")
