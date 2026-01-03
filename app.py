@@ -237,11 +237,12 @@ else:
     tabs = st.tabs(["My Profile", "Live Catch Feed", "Captains Directory", "Events", "My Events"])
 
     with tabs[0]:
-        st.header(st.session_state.logged_user)  # Header is now the username
+        # Username header
+        st.header(st.session_state.logged_user)
 
-        # Centered profile picture
-        col_pic = st.columns([1, 2, 1])[1]
-        with col_pic:
+        # Centered profile picture section
+        col_center = st.columns([1, 2, 1])[1]
+        with col_center:
             uploaded_pic = None
             if user_data.get('picture') is None:
                 uploaded_pic = st.file_uploader("Upload Profile Picture", type=["jpg", "png", "jpeg"])
@@ -256,11 +257,11 @@ else:
                 st.success("Profile picture updated!")
                 st.rerun()
 
-        # City, State next to picture (for Captains)
+        # City/State centered below picture (for Captains)
         if user_data['role'] == "Captain":
             col_city_state = st.columns([1, 2, 1])[1]
             with col_city_state:
-                st.subheader(f"{user_data.get('city', 'N/A')}, {user_data.get('state', 'N/A')}")
+                st.subheader(f"{user_data.get('city', '')}, {user_data.get('state', '')}")
 
         # Rest of profile fields
         user_data['phone'] = st.text_input("Phone Number", value=user_data.get('phone', ""))
