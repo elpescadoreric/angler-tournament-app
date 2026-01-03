@@ -288,6 +288,7 @@ else:
                 user_data['state'] = st.text_input("State", value=user_data.get('state', ""))
         if st.button("Save Profile"):
             st.success("Profile saved successfully!")
+            st.rerun()  # Force rerun to update displayed County/State immediately
 
     # Other tabs (Live Catch Feed, Captains Directory, Events, My Events) – unchanged
 
