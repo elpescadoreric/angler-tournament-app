@@ -234,10 +234,14 @@ else:
         st.session_state.role = None
         st.rerun()
 
-    tabs = st.tabs(["My Profile", "Live Catch Feed", "Captains Directory", "Events", "My Events"])
+    # Tabs with Submit Catch tab for Captains
+    tab_names = ["My Profile", "Live Catch Feed", "Captains Directory", "Events", "My Events"]
+    if st.session_state.role == "Captain":
+        tab_names.insert(1, "Submit Catch")  # Insert after My Profile
+    tabs = st.tabs(tab_names)
 
+    # My Profile
     with tabs[0]:
-        # Username header
         st.header(st.session_state.logged_user)
 
         # Profile picture (left-aligned)
@@ -288,8 +292,131 @@ else:
                 user_data['state'] = st.text_input("State", value=user_data.get('state', ""))
         if st.button("Save Profile"):
             st.success("Profile saved successfully!")
-            st.rerun()  # Force rerun to update displayed County/State immediately
+            st.rerun()  # Refresh to show updated County/State
 
-    # Other tabs (Live Catch Feed, Captains Directory, Events, My Events) – unchanged
+    # Submit Catch tab (only for Captains)
+    if st.session_state.role == "Captain":
+        with tabs[1]:
+            st.header("Submit Catch")
+            st.info(f"Today's wristband color: **{st.session_state.wristband_color.get('Everyday Angler Charter Tournament', 'Red')}**")
+            with st.form("submit_catch", clear_on_submit=True):
+                division = st.selectbox("Division", ["Pelagic", "Reef"])
+                species = st.selectbox("Species", SPECIES_OPTIONS)
+                angler_name = st.selectbox("Angler/Team Name", st.session_state.daily_anglers or ["No registration yet"])
+                certifying_captain = st.text_input("Certifying Captain", value=st.session_state.logged_user, disabled=True)
+                weight = st.number_input("Weight (lbs)", min_value=0.0, step=0.1)
+                weigh_in_location = st.selectbox("Weigh-In Location", WEIGH_IN_LOCATIONS)
+                colv1, colv2 = st.columns(2)
+                with colv1:
+                    landing_video = st.file_uploader("Landing Video (show wristband)", type=["mp4", "mov"])
+                with colv2:
+                    weighin_video = st.file_uploader("Weigh-in Video (show wristband + scale)", type=["mp4", "mov"])
+                confirm_password = st.text_input("Re-enter password to confirm", type="password")
+                submitted = st.form_submit_button("Submit Catch")
+                if submitted:
+                    if angler_name == "No registration yet":
+                        st.error("Angler must register first")
+                    elif certifying_captain != st.session_state.logged_user:
+                        st.error("Certifying Captain must be you")
+                    elif st.session_state.users[st.session_state.logged_user]['password'] != confirm_password:
+                        st.error("Password incorrect")
+                    elif landing_video and landing_video.size < 500000:
+                        st.error("Landing video too short")
+                    elif weighin_video and weighin_video.size < 500000:
+                        st.error("Weigh-in video too short")
+                    else:
+                        st.session_state.catches.append({
+                            'captain': st.session_state.logged_user,
+                            'angler': angler_name,
+                            'division': division,
+                            'species': species,
+                            'weight': weight,
+                            'weigh_in': weigh_in_location,
+                            'landing_video': landing_video.name if landing_video else "Missing",
+                            'weighin_video': weighin_video.name if weighin_video else "Missing",
+                            'date': datetime.now().strftime("%Y-%m-%d")
+                        })
+                        st.success("Catch submitted successfully!")
+
+    # Live Catch Feed
+    tab_index = 1 if st.session_state.role == "Angler/Team" else 2
+    with tabs[tab_index]:
+        st.header("Live Catch Feed")
+        if st.session_state.catches:
+            for catch in reversed(st.session_state.catches):
+                with st.expander(f"{catch['angler']} – {catch['weight']:.2f} lbs – {catch['species']} – {catch['date']}"):
+                    st.write(f"Captain: {catch['captain']} | Weigh-In: {catch['weigh_in']}")
+                    colv1, colv2 = st.columns(2)
+                    with colv1:
+                        if catch['landing_video'] != "Missing":
+                            st.video("https://via.placeholder.com/150?text=Landing+Video")
+                        else:
+                            st.info("Landing video missing")
+                    with colv2:
+                        if catch['weighin_video'] != "Missing":
+                            st.video("https://via.placeholder.com/150?text=Weigh-in+Video")
+                        else:
+                            st.info("Weigh-in video missing")
+        else:
+            st.info("No catches yet – be the first!")
+
+    # Captains Directory
+    tab_index = 2 if st.session_state.role == "Angler/Team" else 3
+    with tabs[tab_index]:
+        st.header("Captains Directory")
+        county_filter = st.selectbox("Filter by County", ["All"] + COUNTIES)
+        captains = [u for u in st.session_state.users.values() if u['role'] == "Captain"]
+        if county_filter != "All":
+            captains = [c for c in captains if c.get('county') == county_filter]
+        for captain in captains:
+            username = [k for k, v in st.session_state.users.items() if v == captain][0]
+            with st.expander(f"{username} – {captain.get('county', 'N/A')}, {captain.get('state', 'FL')}"):
+                if captain.get('picture'):
+                    st.image(captain['picture'], width=150)
+                st.write(f"Phone: {captain.get('phone', 'N/A')}")
+                st.write(f"Email: {captain.get('email', 'N/A')}")
+                st.write(f"Website: {captain.get('website', 'N/A')}")
+                st.write(f"Bio: {captain.get('bio', 'N/A')}")
+                st.subheader("Social")
+                if captain.get('instagram'):
+                    st.markdown(f"[![Instagram](https://upload.wikimedia.org/wikipedia/commons/thumb/a/a5/Instagram_icon.png/20px-Instagram_icon.png)]({captain['instagram']})", unsafe_allow_html=True)
+                if captain.get('facebook'):
+                    st.markdown(f"[![Facebook](https://upload.wikimedia.org/wikipedia/commons/thumb/5/51/Facebook_f_logo_%282019%29.svg/20px-Facebook_f_logo_%282019%29.svg.png)]({captain['facebook']})", unsafe_allow_html=True)
+                if captain.get('tiktok'):
+                    st.markdown(f"[![TikTok](https://upload.wikimedia.org/wikipedia/en/thumb/a/a4/TikTok_logo.svg/20px-TikTok_logo.svg.png)]({captain['tiktok']})", unsafe_allow_html=True)
+                if captain.get('youtube'):
+                    st.markdown(f"[![YouTube](https://upload.wikimedia.org/wikipedia/commons/thumb/0/09/YouTube_full-color_icon_%282017%29.svg/20px-YouTube_full-color_icon_%282017%29.svg.png)]({captain['youtube']})", unsafe_allow_html=True)
+                if captain.get('x'):
+                    st.markdown(f"[![X](https://upload.wikimedia.org/wikipedia/en/thumb/6/60/Twitter_bird_logo_2012.svg/20px-Twitter_bird_logo_2012.svg.png)]({captain['x']})", unsafe_allow_html=True)
+
+    # Events
+    tab_index = 3 if st.session_state.role == "Angler/Team" else 4
+    with tabs[tab_index]:
+        st.header("Available Events")
+        for event_name, event_data in st.session_state.events.items():
+            with st.expander(event_name):
+                st.write(event_data['description'])
+                st.write(f"Start: {event_data['start']} | End: {event_data['end']}")
+                if st.session_state.logged_user in event_data['registered_users']:
+                    st.success("You are registered for this event")
+                else:
+                    if st.button(f"Register for {event_name}", key=event_name):
+                        event_data['registered_users'].append(st.session_state.logged_user)
+                        user_data['events'].append(event_name)
+                        st.success(f"Registered for {event_name}!")
+
+    # My Events
+    tab_index = 4 if st.session_state.role == "Angler/Team" else 5
+    with tabs[tab_index]:
+        st.header("My Events")
+        if user_data['events']:
+            for event in user_data['events']:
+                event_data = st.session_state.events[event]
+                with st.expander(event):
+                    st.write(event_data['description'])
+                    st.write(f"Start: {event_data['start']} | End: {event_data['end']}")
+                    st.info("Event features (daily registration, catch submission, leaderboards) coming soon!")
+        else:
+            st.info("Join an event from the Events tab")
 
 st.caption("Everyday Angler App – Your home for charter tournaments | Tight lines!")
