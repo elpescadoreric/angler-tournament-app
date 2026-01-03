@@ -238,25 +238,31 @@ else:
 
     with tabs[0]:
         st.header("Your Profile")
-        # Picture section with conditional uploader
-        col_pic, col_info = st.columns([1, 3])
+
+        # Profile picture centered
+        col_pic = st.columns([1, 2, 1])[1]  # Center column
         with col_pic:
-            uploaded_pic = st.file_uploader("Upload Profile Picture" if user_data.get('picture') is None else "Change Profile Picture", type=["jpg", "png", "jpeg"], key="pic_uploader")
+            uploaded_pic = None
+            if user_data.get('picture') is None:
+                uploaded_pic = st.file_uploader("Upload Profile Picture", type=["jpg", "png", "jpeg"])
+            else:
+                st.image(user_data['picture'], width=200)
+                if st.button("Change Profile Picture"):
+                    uploaded_pic = st.file_uploader("Upload New Profile Picture", type=["jpg", "png", "jpeg"], key="new_pic")
+
             if uploaded_pic:
                 fixed_img = fix_image_orientation(uploaded_pic)
                 user_data['picture'] = fixed_img
                 st.success("Profile picture updated!")
-            if user_data.get('picture'):
-                st.image(user_data['picture'], width=150)
-            else:
-                st.image("https://via.placeholder.com/150?text=No+Picture", width=150)
+                st.rerun()
 
-        with col_info:
-            if user_data['role'] == "Captain":
-                st.subheader(f"{user_data.get('city', 'N/A')}, {user_data.get('state', 'N/A')}")
-            else:
-                st.write("")  # Spacer
+        # City/State next to picture (for Captains)
+        if user_data['role'] == "Captain":
+            col_city = st.columns([1, 2, 1])[1]
+            with col_city:
+                st.subheader(f"{user_data.get('city', '')}, {user_data.get('state', '')}")
 
+        # Rest of profile fields
         user_data['phone'] = st.text_input("Phone Number", value=user_data.get('phone', ""))
         user_data['email'] = st.text_input("Email Address", value=user_data.get('email', ""))
         user_data['website'] = st.text_input("Website", value=user_data.get('website', ""))
@@ -278,8 +284,11 @@ else:
             st.markdown(f"[![X](https://upload.wikimedia.org/wikipedia/en/thumb/6/60/Twitter_bird_logo_2012.svg/20px-Twitter_bird_logo_2012.svg.png)]({user_data['x']})", unsafe_allow_html=True)
         user_data['bio'] = st.text_area("Bio", value=user_data.get('bio', ""))
         if user_data['role'] == "Captain":
-            user_data['city'] = st.text_input("City", value=user_data.get('city', ""))
-            user_data['state'] = st.text_input("State", value=user_data.get('state', ""))
+            col_city_state = st.columns(2)
+            with col_city_state[0]:
+                user_data['city'] = st.text_input("City", value=user_data.get('city', ""))
+            with col_city_state[1]:
+                user_data['state'] = st.text_input("State", value=user_data.get('state', ""))
         if st.button("Save Profile"):
             st.success("Profile saved successfully!")
 
