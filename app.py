@@ -106,7 +106,7 @@ def register(username, password, confirm_password, role):
         'youtube': "",
         'x': "",
         'bio': "",
-        'city': "",
+        'county': "",
         'state': "",
         'events': []
     }
@@ -167,7 +167,7 @@ if st.session_state.logged_user is None:
                 'youtube': "",
                 'x': "",
                 'bio': "",
-                'city': "Palm Beach",
+                'county': "Palm Beach",
                 'state': "Florida",
                 'events': []
             }
@@ -189,7 +189,7 @@ if st.session_state.logged_user is None:
                 'youtube': "",
                 'x': "",
                 'bio': "",
-                'city': "",
+                'county': "",
                 'state': "",
                 'events': []
             }
@@ -255,9 +255,9 @@ else:
             st.success("Profile picture updated!")
             st.rerun()
 
-        # City/State directly under picture (for Captains)
+        # County, State directly under picture (for Captains)
         if user_data['role'] == "Captain":
-            st.subheader(f"{user_data.get('city', '')}, {user_data.get('state', '')}")
+            st.subheader(f"{user_data.get('county', '')}, {user_data.get('state', '')}")
 
         # Rest of profile fields
         user_data['phone'] = st.text_input("Phone Number", value=user_data.get('phone', ""))
@@ -281,10 +281,10 @@ else:
             st.markdown(f"[![X](https://upload.wikimedia.org/wikipedia/en/thumb/6/60/Twitter_bird_logo_2012.svg/20px-Twitter_bird_logo_2012.svg.png)]({user_data['x']})", unsafe_allow_html=True)
         user_data['bio'] = st.text_area("Bio", value=user_data.get('bio', ""))
         if user_data['role'] == "Captain":
-            col_city_state = st.columns(2)
-            with col_city_state[0]:
-                user_data['city'] = st.text_input("City", value=user_data.get('city', ""))
-            with col_city_state[1]:
+            col_county_state = st.columns(2)
+            with col_county_state[0]:
+                user_data['county'] = st.text_input("County", value=user_data.get('county', ""))
+            with col_county_state[1]:
                 user_data['state'] = st.text_input("State", value=user_data.get('state', ""))
         if st.button("Save Profile"):
             st.success("Profile saved successfully!")
