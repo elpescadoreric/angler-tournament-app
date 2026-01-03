@@ -240,26 +240,24 @@ else:
         # Username header
         st.header(st.session_state.logged_user)
 
-        # Centered profile picture and related elements
-        col_center = st.columns([1, 3, 1])[1]
-        with col_center:
-            uploaded_pic = None
-            if user_data.get('picture') is None:
-                uploaded_pic = st.file_uploader("Upload Profile Picture", type=["jpg", "png", "jpeg"])
-            else:
-                st.image(user_data['picture'], width=200)
-                if st.button("Change Profile Picture"):
-                    uploaded_pic = st.file_uploader("Upload New Profile Picture", type=["jpg", "png", "jpeg"], key="new_pic")
+        # Profile picture (left-aligned)
+        uploaded_pic = None
+        if user_data.get('picture') is None:
+            uploaded_pic = st.file_uploader("Upload Profile Picture", type=["jpg", "png", "jpeg"])
+        else:
+            st.image(user_data['picture'], width=200)
+            if st.button("Change Profile Picture"):
+                uploaded_pic = st.file_uploader("Upload New Profile Picture", type=["jpg", "png", "jpeg"], key="new_pic")
 
-            if uploaded_pic:
-                fixed_img = fix_image_orientation(uploaded_pic)
-                user_data['picture'] = fixed_img
-                st.success("Profile picture updated!")
-                st.rerun()
+        if uploaded_pic:
+            fixed_img = fix_image_orientation(uploaded_pic)
+            user_data['picture'] = fixed_img
+            st.success("Profile picture updated!")
+            st.rerun()
 
-            # City/State below picture (for Captains)
-            if user_data['role'] == "Captain":
-                st.subheader(f"{user_data.get('city', '')}, {user_data.get('state', '')}")
+        # City/State directly under picture (for Captains)
+        if user_data['role'] == "Captain":
+            st.subheader(f"{user_data.get('city', '')}, {user_data.get('state', '')}")
 
         # Rest of profile fields
         user_data['phone'] = st.text_input("Phone Number", value=user_data.get('phone', ""))
