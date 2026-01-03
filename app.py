@@ -29,11 +29,56 @@ if 'wristband_color' not in st.session_state:
 # Counties
 COUNTIES = ["Palm Beach", "Broward", "Miami-Dade"]
 
-# Weigh-in locations (full list – paste your complete list here)
-WEIGH_IN_LOCATIONS = WEIGH_IN_LOCATIONS  # Your full list
+# Weigh-in locations (full list)
+WEIGH_IN_LOCATIONS = [
+    "Sailfish Marina Resort (Singer Island)",
+    "Riviera Beach Marina Village",
+    "Boynton Harbor Marina",
+    "Palm Beach Yacht Center (Lantana)",
+    "Two Georges Waterfront Grille (Boynton Beach)",
+    "Banana Boat (Boynton Beach)",
+    "Old Key Lime House (Lantana)",
+    "Frigate’s Waterfront Bar & Grill (North Palm Beach)",
+    "Prime Catch (Boynton Beach)",
+    "Waterway Cafe (Palm Beach Gardens)",
+    "Seasons 52 (Palm Beach Gardens)",
+    "The River House (Palm Beach Gardens)",
+    "Sands Harbor Resort & Marina (Pompano Beach)",
+    "PORT 32 Lighthouse Point Marina",
+    "Taha Marine Center (Pompano Beach)",
+    "The Cove Marina / Two Georges at the Cove (Deerfield Beach)",
+    "Shooters Waterfront (Fort Lauderdale)",
+    "Boatyard (Fort Lauderdale)",
+    "Coconuts (Fort Lauderdale)",
+    "Rustic Inn Crabhouse (Fort Lauderdale)",
+    "15th Street Fisheries (Fort Lauderdale)",
+    "Southport Raw Bar (Fort Lauderdale)",
+    "Kaluz Restaurant (Fort Lauderdale)",
+    "Boathouse at the Riverside (Fort Lauderdale)",
+    "Homestead Bayfront Marina",
+    "Black Point Marina (Cutler Bay)",
+    "Haulover Marine Center / Bill Bird Marina",
+    "Crandon Park Marina (Key Biscayne)",
+    "Matheson Hammock Marina (Coral Gables)",
+    "Dinner Key Marina (Coconut Grove)",
+    "Rusty Pelican (Key Biscayne)",
+    "Monty's Raw Bar (Coconut Grove)",
+    "Shuckers Waterfront Bar & Grill (North Bay Village)",
+    "Garcia's Seafood Grille & Fish Market (Miami River)",
+    "Boater's Grill (Key Biscayne)",
+    "American Social (Brickell)",
+    "Billy's Stone Crab Restaurant (Hollywood)",
+    "Seaspice Brasserie & Lounge (Miami River)"
+]
 
-# Species options
-SPECIES_OPTIONS = SPECIES_OPTIONS  # Your list
+SPECIES_OPTIONS = [
+    "King Mackerel",
+    "Spanish Mackerel",
+    "Wahoo",
+    "Dolphin/Mahi Mahi",
+    "Black Fin Tuna",
+    "Other - Captain's Choice Award Entry"
+]
 
 # Simple login/register
 if 'logged_user' not in st.session_state:
@@ -197,11 +242,6 @@ else:
         tab_names.insert(1, "Submit Catch")  # Insert after My Profile
     tabs = st.tabs(tab_names)
 
-    # Auto-select Submit Catch tab if button clicked
-    if st.session_state.role == "Captain" and st.session_state.get('selected_tab', "") == "Submit Catch":
-        # Streamlit doesn't have direct tab selection, so we use this workaround to focus
-        st.write("")  # Placeholder – the tab is already added, and reload brings focus
-
     # My Profile
     with tabs[0]:
         st.header("Your Profile")
@@ -234,6 +274,50 @@ else:
         user_data['bio'] = st.text_area("Bio", value=user_data.get('bio', ""))
         if st.button("Save Profile"):
             st.success("Profile saved successfully!")
+
+    # Submit Catch tab (only for Captains)
+    if st.session_state.role == "Captain":
+        with tabs[1]:
+            st.header("Submit Catch")
+            st.info(f"Today's wristband color: **{st.session_state.wristband_color.get('Everyday Angler Charter Tournament', 'Red')}**")
+            with st.form("submit_catch", clear_on_submit=True):
+                division = st.selectbox("Division", ["Pelagic", "Reef"])
+                species = st.selectbox("Species", SPECIES_OPTIONS)
+                angler_name = st.selectbox("Angler/Team Name", st.session_state.daily_anglers or ["No registration yet"])
+                certifying_captain = st.text_input("Certifying Captain", value=st.session_state.logged_user, disabled=True)
+                weight = st.number_input("Weight (lbs)", min_value=0.0, step=0.1)
+                weigh_in_location = st.selectbox("Weigh-In Location", WEIGH_IN_LOCATIONS)
+                colv1, colv2 = st.columns(2)
+                with colv1:
+                    landing_video = st.file_uploader("Landing Video (show wristband)", type=["mp4", "mov"])
+                with colv2:
+                    weighin_video = st.file_uploader("Weigh-in Video (show wristband + scale)", type=["mp4", "mov"])
+                confirm_password = st.text_input("Re-enter password to confirm", type="password")
+                submitted = st.form_submit_button("Submit Catch")
+                if submitted:
+                    if angler_name == "No registration yet":
+                        st.error("Angler must register first")
+                    elif certifying_captain != st.session_state.logged_user:
+                        st.error("Certifying Captain must be you")
+                    elif st.session_state.users[st.session_state.logged_user]['password'] != confirm_password:
+                        st.error("Password incorrect")
+                    elif landing_video and landing_video.size < 500000:
+                        st.error("Landing video too short")
+                    elif weighin_video and weighin_video.size < 500000:
+                        st.error("Weigh-in video too short")
+                    else:
+                        st.session_state.catches.append({
+                            'captain': st.session_state.logged_user,
+                            'angler': angler_name,
+                            'division': division,
+                            'species': species,
+                            'weight': weight,
+                            'weigh_in': weigh_in_location,
+                            'landing_video': landing_video.name if landing_video else "Missing",
+                            'weighin_video': weighin_video.name if weighin_video else "Missing",
+                            'date': datetime.now().strftime("%Y-%m-%d")
+                        })
+                        st.success("Catch submitted successfully!")
 
     # Live Catch Feed
     tab_index = 1 if st.session_state.role == "Angler/Team" else 2
