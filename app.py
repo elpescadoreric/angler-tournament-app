@@ -110,7 +110,6 @@ def register(username, password, confirm_password, role):
         'state': "",
         'events': []
     }
-    # Add registered Angler/Team to daily_anglers
     if role == "Angler/Team":
         if username not in st.session_state.daily_anglers:
             st.session_state.daily_anglers.append(username)
@@ -228,7 +227,7 @@ if st.session_state.logged_user is None:
             confirm_pass = st.text_input("Confirm Password", type="password")
             role = st.selectbox("Role", ["Angler/Team", "Captain"])
             if role == "Captain":
-                st.markdown("**All captains must agree to adhere to all local, state, and federal laws while participating in any Everyday Angler App tournament. Any false information provided will be prosecuted to the fullest extent.**")
+                st.markdown("**All captains must agree to adhere to all local, state, and federal laws while participating in any Everyday Angler App tournament. Any false information provided will be prosecuted to the fullest extent. You may be required to submit your merchant mariner credentials and/or to a polygraph test randomly if participating in any tournament on the Everyday Angler App/Website/Platform.**")
                 agree = st.checkbox("I agree to the above statement")
             reg_sub = st.form_submit_button("Register")
             if reg_sub:
@@ -244,13 +243,8 @@ else:
         st.session_state.role = None
         st.rerun()
 
-    # Tabs with Submit Catch as dedicated tab for Captains
-    tab_names = ["My Profile", "Live Catch Feed", "Captains Directory", "Events", "My Events"]
-    if st.session_state.role == "Captain":
-        tab_names.insert(1, "Submit Catch")  # Insert after My Profile
-    tabs = st.tabs(tab_names)
+    tabs = st.tabs(["My Profile", "Live Catch Feed", "Captains Directory", "Events", "My Events"])
 
-    # My Profile
     with tabs[0]:
         st.header(st.session_state.logged_user)
 
@@ -260,8 +254,6 @@ else:
             uploaded_pic = st.file_uploader("Upload Profile Picture", type=["jpg", "png", "jpeg"])
         else:
             st.image(user_data['picture'], width=200)
-            if st.button("Change Profile Picture"):
-                uploaded_pic = st.file_uploader("Upload New Profile Picture", type=["jpg", "png", "jpeg"], key="new_pic")
 
         if uploaded_pic:
             fixed_img = fix_image_orientation(uploaded_pic)
@@ -273,36 +265,55 @@ else:
         if user_data['role'] == "Captain":
             st.subheader(f"{user_data.get('county', '')}, {user_data.get('state', '')}")
 
-        # Rest of profile fields
-        user_data['phone'] = st.text_input("Phone Number", value=user_data.get('phone', ""))
-        user_data['email'] = st.text_input("Email Address", value=user_data.get('email', ""))
-        user_data['website'] = st.text_input("Website", value=user_data.get('website', ""))
-        st.subheader("Social Media")
-        user_data['instagram'] = st.text_input("Instagram URL", value=user_data.get('instagram', ""))
-        if user_data['instagram']:
-            st.markdown(f"[![Instagram](https://upload.wikimedia.org/wikipedia/commons/thumb/a/a5/Instagram_icon.png/20px-Instagram_icon.png)]({user_data['instagram']})", unsafe_allow_html=True)
-        user_data['facebook'] = st.text_input("Facebook URL", value=user_data.get('facebook', ""))
-        if user_data['facebook']:
-            st.markdown(f"[![Facebook](https://upload.wikimedia.org/wikipedia/commons/thumb/5/51/Facebook_f_logo_%282019%29.svg/20px-Facebook_f_logo_%282019%29.svg.png)]({user_data['facebook']})", unsafe_allow_html=True)
-        user_data['tiktok'] = st.text_input("TikTok URL", value=user_data.get('tiktok', ""))
-        if user_data['tiktok']:
-            st.markdown(f"[![TikTok](https://upload.wikimedia.org/wikipedia/en/thumb/a/a4/TikTok_logo.svg/20px-TikTok_logo.svg.png)]({user_data['tiktok']})", unsafe_allow_html=True)
-        user_data['youtube'] = st.text_input("YouTube URL", value=user_data.get('youtube', ""))
-        if user_data['youtube']:
-            st.markdown(f"[![YouTube](https://upload.wikimedia.org/wikipedia/commons/thumb/0/09/YouTube_full-color_icon_%282017%29.svg/20px-YouTube_full-color_icon_%282017%29.svg.png)]({user_data['youtube']})", unsafe_allow_html=True)
-        user_data['x'] = st.text_input("X URL", value=user_data.get('x', ""))
-        if user_data['x']:
-            st.markdown(f"[![X](https://upload.wikimedia.org/wikipedia/en/thumb/6/60/Twitter_bird_logo_2012.svg/20px-Twitter_bird_logo_2012.svg.png)]({user_data['x']})", unsafe_allow_html=True)
-        user_data['bio'] = st.text_area("Bio", value=user_data.get('bio', ""))
-        if user_data['role'] == "Captain":
-            col_county_state = st.columns(2)
-            with col_county_state[0]:
-                user_data['county'] = st.text_input("County", value=user_data.get('county', ""))
-            with col_county_state[1]:
-                user_data['state'] = st.text_input("State", value=user_data.get('state', ""))
-        if st.button("Save Profile"):
-            st.success("Profile saved successfully!")
-            st.rerun()
+        # Profile info (read-only unless editing)
+        if 'editing_profile' not in st.session_state:
+            st.session_state.editing_profile = False
+
+        if st.session_state.editing_profile:
+            user_data['phone'] = st.text_input("Phone Number", value=user_data.get('phone', ""))
+            user_data['email'] = st.text_input("Email Address", value=user_data.get('email', ""))
+            user_data['website'] = st.text_input("Website", value=user_data.get('website', ""))
+            st.subheader("Social Media")
+            user_data['instagram'] = st.text_input("Instagram URL", value=user_data.get('instagram', ""))
+            user_data['facebook'] = st.text_input("Facebook URL", value=user_data.get('facebook', ""))
+            user_data['tiktok'] = st.text_input("TikTok URL", value=user_data.get('tiktok', ""))
+            user_data['youtube'] = st.text_input("YouTube URL", value=user_data.get('youtube', ""))
+            user_data['x'] = st.text_input("X URL", value=user_data.get('x', ""))
+            user_data['bio'] = st.text_area("Bio", value=user_data.get('bio', ""))
+            if user_data['role'] == "Captain":
+                col_county_state = st.columns(2)
+                with col_county_state[0]:
+                    user_data['county'] = st.text_input("County", value=user_data.get('county', ""))
+                with col_county_state[1]:
+                    user_data['state'] = st.text_input("State", value=user_data.get('state', ""))
+            if st.button("Save Profile"):
+                st.success("Profile saved successfully!")
+                st.session_state.editing_profile = False
+                st.rerun()
+            if st.button("Cancel"):
+                st.session_state.editing_profile = False
+                st.rerun()
+        else:
+            st.write(f"**Phone:** {user_data.get('phone', 'N/A')}")
+            st.write(f"**Email:** {user_data.get('email', 'N/A')}")
+            if user_data.get('website'):
+                st.markdown(f"**Website:** [{user_data['website']}]({user_data['website']})")
+            st.subheader("Social Media")
+            if user_data.get('instagram'):
+                st.markdown(f"[![Instagram](https://upload.wikimedia.org/wikipedia/commons/thumb/a/a5/Instagram_icon.png/20px-Instagram_icon.png)]({user_data['instagram']}) {user_data['instagram']}")
+            if user_data.get('facebook'):
+                st.markdown(f"[![Facebook](https://upload.wikimedia.org/wikipedia/commons/thumb/5/51/Facebook_f_logo_%282019%29.svg/20px-Facebook_f_logo_%282019%29.svg.png)]({user_data['facebook']}) {user_data['facebook']}")
+            if user_data.get('tiktok'):
+                st.markdown(f"[![TikTok](https://upload.wikimedia.org/wikipedia/en/thumb/a/a4/TikTok_logo.svg/20px-TikTok_logo.svg.png)]({user_data['tiktok']}) {user_data['tiktok']}")
+            if user_data.get('youtube'):
+                st.markdown(f"[![YouTube](https://upload.wikimedia.org/wikipedia/commons/thumb/0/09/YouTube_full-color_icon_%282017%29.svg/20px-YouTube_full-color_icon_%282017%29.svg.png)]({user_data['youtube']}) {user_data['youtube']}")
+            if user_data.get('x'):
+                st.markdown(f"[![X](https://upload.wikimedia.org/wikipedia/commons/thumb/0/0f/X_logo_2023.svg/20px-X_logo_2023.svg.png)]({user_data['x']}) {user_data['x']}")
+            st.write(f"**Bio:** {user_data.get('bio', 'N/A')}")
+
+            if st.button("Edit Profile"):
+                st.session_state.editing_profile = True
+                st.rerun()
 
     # Submit Catch tab (only for Captains)
     if st.session_state.role == "Captain":
@@ -386,19 +397,20 @@ else:
                     st.image(captain['picture'], width=150)
                 st.write(f"Phone: {captain.get('phone', 'N/A')}")
                 st.write(f"Email: {captain.get('email', 'N/A')}")
-                st.write(f"Website: {captain.get('website', 'N/A')}")
+                if captain.get('website'):
+                    st.markdown(f"Website: [{captain['website']}]({captain['website']})")
                 st.write(f"Bio: {captain.get('bio', 'N/A')}")
                 st.subheader("Social")
                 if captain.get('instagram'):
-                    st.markdown(f"[![Instagram](https://upload.wikimedia.org/wikipedia/commons/thumb/a/a5/Instagram_icon.png/20px-Instagram_icon.png)]({captain['instagram']})", unsafe_allow_html=True)
+                    st.markdown(f"[![Instagram](https://upload.wikimedia.org/wikipedia/commons/thumb/a/a5/Instagram_icon.png/20px-Instagram_icon.png)]({captain['instagram']})")
                 if captain.get('facebook'):
-                    st.markdown(f"[![Facebook](https://upload.wikimedia.org/wikipedia/commons/thumb/5/51/Facebook_f_logo_%282019%29.svg/20px-Facebook_f_logo_%282019%29.svg.png)]({captain['facebook']})", unsafe_allow_html=True)
+                    st.markdown(f"[![Facebook](https://upload.wikimedia.org/wikipedia/commons/thumb/5/51/Facebook_f_logo_%282019%29.svg/20px-Facebook_f_logo_%282019%29.svg.png)]({captain['facebook']})")
                 if captain.get('tiktok'):
-                    st.markdown(f"[![TikTok](https://upload.wikimedia.org/wikipedia/en/thumb/a/a4/TikTok_logo.svg/20px-TikTok_logo.svg.png)]({captain['tiktok']})", unsafe_allow_html=True)
+                    st.markdown(f"[![TikTok](https://upload.wikimedia.org/wikipedia/en/thumb/a/a4/TikTok_logo.svg/20px-TikTok_logo.svg.png)]({captain['tiktok']})")
                 if captain.get('youtube'):
-                    st.markdown(f"[![YouTube](https://upload.wikimedia.org/wikipedia/commons/thumb/0/09/YouTube_full-color_icon_%282017%29.svg/20px-YouTube_full-color_icon_%282017%29.svg.png)]({captain['youtube']})", unsafe_allow_html=True)
+                    st.markdown(f"[![YouTube](https://upload.wikimedia.org/wikipedia/commons/thumb/0/09/YouTube_full-color_icon_%282017%29.svg/20px-YouTube_full-color_icon_%282017%29.svg.png)]({captain['youtube']})")
                 if captain.get('x'):
-                    st.markdown(f"[![X](https://upload.wikimedia.org/wikipedia/en/thumb/6/60/Twitter_bird_logo_2012.svg/20px-Twitter_bird_logo_2012.svg.png)]({captain['x']})", unsafe_allow_html=True)
+                    st.markdown(f"[![X](https://upload.wikimedia.org/wikipedia/commons/thumb/0/0f/X_logo_2023.svg/20px-X_logo_2023.svg.png)]({captain['x']})")
 
     # Events
     tab_index = 3 if st.session_state.role == "Angler/Team" else 4
