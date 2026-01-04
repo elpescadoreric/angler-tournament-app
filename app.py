@@ -18,7 +18,7 @@ if 'events' not in st.session_state:
 if 'user_events' not in st.session_state:
     st.session_state.user_events = {}
 if 'daily_anglers' not in st.session_state:
-    st.session_state.daily_anglers = {}
+    st.session_state.daily_anglers = []
 if 'catches' not in st.session_state:
     st.session_state.catches = []
 if 'pending_catches' not in st.session_state:
@@ -193,6 +193,9 @@ if st.session_state.logged_user is None:
                 'state': "",
                 'events': []
             }
+            # Add testangler to daily_anglers list for selection in Submit Catch
+            if "testangler" not in st.session_state.daily_anglers:
+                st.session_state.daily_anglers.append("testangler")
             st.rerun()
 
     st.divider()
@@ -234,7 +237,15 @@ else:
         st.session_state.role = None
         st.rerun()
 
-    # Tabs with Submit Catch tab for Captains
+    # High-visibility Submit Catch button top left (only for Captains)
+    col_submit, col_spacer = st.columns([1, 5])
+    with col_submit:
+        if st.session_state.role == "Captain":
+            if st.button("🎣 SUBMIT CATCH", type="primary", use_container_width=True):
+                st.session_state.selected_tab = "Submit Catch"
+                st.rerun()
+
+    # Tabs with Submit Catch as dedicated tab for Captains
     tab_names = ["My Profile", "Live Catch Feed", "Captains Directory", "Events", "My Events"]
     if st.session_state.role == "Captain":
         tab_names.insert(1, "Submit Catch")  # Insert after My Profile
@@ -292,7 +303,7 @@ else:
                 user_data['state'] = st.text_input("State", value=user_data.get('state', ""))
         if st.button("Save Profile"):
             st.success("Profile saved successfully!")
-            st.rerun()  # Refresh to show updated County/State
+            st.rerun()
 
     # Submit Catch tab (only for Captains)
     if st.session_state.role == "Captain":
@@ -302,7 +313,7 @@ else:
             with st.form("submit_catch", clear_on_submit=True):
                 division = st.selectbox("Division", ["Pelagic", "Reef"])
                 species = st.selectbox("Species", SPECIES_OPTIONS)
-                angler_name = st.selectbox("Angler/Team Name", st.session_state.daily_anglers or ["No registration yet"])
+                angler_name = st.selectbox("Angler/Team Name", st.session_state.daily_anglers)
                 certifying_captain = st.text_input("Certifying Captain", value=st.session_state.logged_user, disabled=True)
                 weight = st.number_input("Weight (lbs)", min_value=0.0, step=0.1)
                 weigh_in_location = st.selectbox("Weigh-In Location", WEIGH_IN_LOCATIONS)
