@@ -110,6 +110,10 @@ def register(username, password, confirm_password, role):
         'state': "",
         'events': []
     }
+    # Add registered Angler/Team to daily_anglers list
+    if role == "Angler/Team":
+        if username not in st.session_state.daily_anglers:
+            st.session_state.daily_anglers.append(username)
     return True
 
 def login(username, password):
@@ -171,6 +175,9 @@ if st.session_state.logged_user is None:
                 'state': "Florida",
                 'events': []
             }
+            # Add default password for test user
+            if "testcaptain" not in st.session_state.users:
+                st.session_state.users["testcaptain"] = {'password': "test"}
             st.rerun()
     with col_demo2:
         if st.button("Test as Angler/Team"):
@@ -193,7 +200,10 @@ if st.session_state.logged_user is None:
                 'state': "",
                 'events': []
             }
-            # Add testangler to daily_anglers list for selection in Submit Catch
+            # Add default password for test user
+            if "testangler" not in st.session_state.users:
+                st.session_state.users["testangler"] = {'password': "test"}
+            # Add testangler to daily_anglers
             if "testangler" not in st.session_state.daily_anglers:
                 st.session_state.daily_anglers.append("testangler")
             st.rerun()
@@ -237,18 +247,10 @@ else:
         st.session_state.role = None
         st.rerun()
 
-    # High-visibility Submit Catch button top left (only for Captains)
-    col_submit, col_spacer = st.columns([1, 5])
-    with col_submit:
-        if st.session_state.role == "Captain":
-            if st.button("🎣 SUBMIT CATCH", type="primary", use_container_width=True):
-                st.session_state.selected_tab = "Submit Catch"
-                st.rerun()
-
     # Tabs with Submit Catch as dedicated tab for Captains
     tab_names = ["My Profile", "Live Catch Feed", "Captains Directory", "Events", "My Events"]
     if st.session_state.role == "Captain":
-        tab_names.insert(1, "Submit Catch")  # Insert after My Profile
+        tab_names.insert(1, "Submit Catch")
     tabs = st.tabs(tab_names)
 
     # My Profile
@@ -325,11 +327,13 @@ else:
                 confirm_password = st.text_input("Re-enter password to confirm", type="password")
                 submitted = st.form_submit_button("Submit Catch")
                 if submitted:
+                    # Use "test" password for test users
+                    actual_password = st.session_state.users.get(st.session_state.logged_user, {}).get('password', "test")
                     if angler_name == "No registration yet":
                         st.error("Angler must register first")
                     elif certifying_captain != st.session_state.logged_user:
                         st.error("Certifying Captain must be you")
-                    elif st.session_state.users[st.session_state.logged_user]['password'] != confirm_password:
+                    elif actual_password != confirm_password:
                         st.error("Password incorrect")
                     elif landing_video and landing_video.size < 500000:
                         st.error("Landing video too short")
