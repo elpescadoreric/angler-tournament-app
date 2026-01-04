@@ -18,7 +18,7 @@ if 'events' not in st.session_state:
 if 'user_events' not in st.session_state:
     st.session_state.user_events = {}
 if 'daily_anglers' not in st.session_state:
-    st.session_state.daily_anglers = []
+    st.session_state.daily_anglers = []  # List of registered Angler/Team usernames
 if 'catches' not in st.session_state:
     st.session_state.catches = []
 if 'pending_catches' not in st.session_state:
@@ -110,7 +110,7 @@ def register(username, password, confirm_password, role):
         'state': "",
         'events': []
     }
-    # Add registered Angler/Team to daily_anglers list
+    # Add Angler/Team to daily_anglers list for Submit Catch dropdown
     if role == "Angler/Team":
         if username not in st.session_state.daily_anglers:
             st.session_state.daily_anglers.append(username)
@@ -247,13 +247,8 @@ else:
         st.session_state.role = None
         st.rerun()
 
-    # Tabs with Submit Catch as dedicated tab for Captains
-    tab_names = ["My Profile", "Live Catch Feed", "Captains Directory", "Events", "My Events"]
-    if st.session_state.role == "Captain":
-        tab_names.insert(1, "Submit Catch")
-    tabs = st.tabs(tab_names)
+    tabs = st.tabs(["My Profile", "Live Catch Feed", "Captains Directory", "Events", "My Events"])
 
-    # My Profile
     with tabs[0]:
         st.header(st.session_state.logged_user)
 
@@ -315,7 +310,7 @@ else:
             with st.form("submit_catch", clear_on_submit=True):
                 division = st.selectbox("Division", ["Pelagic", "Reef"])
                 species = st.selectbox("Species", SPECIES_OPTIONS)
-                angler_name = st.selectbox("Angler/Team Name", st.session_state.daily_anglers)
+                angler_name = st.selectbox("Angler/Team Name", st.session_state.daily_anglers if st.session_state.daily_anglers else ["No registered anglers yet"])
                 certifying_captain = st.text_input("Certifying Captain", value=st.session_state.logged_user, disabled=True)
                 weight = st.number_input("Weight (lbs)", min_value=0.0, step=0.1)
                 weigh_in_location = st.selectbox("Weigh-In Location", WEIGH_IN_LOCATIONS)
@@ -327,7 +322,6 @@ else:
                 confirm_password = st.text_input("Re-enter password to confirm", type="password")
                 submitted = st.form_submit_button("Submit Catch")
                 if submitted:
-                    # Safe password check
                     actual_password = st.session_state.users.get(st.session_state.logged_user, {}).get('password', "test")
                     if not st.session_state.daily_anglers:
                         st.error("No registered anglers yet")
