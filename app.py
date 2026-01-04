@@ -327,10 +327,10 @@ else:
                 confirm_password = st.text_input("Re-enter password to confirm", type="password")
                 submitted = st.form_submit_button("Submit Catch")
                 if submitted:
-                    # Use "test" password for test users
+                    # Safe password check
                     actual_password = st.session_state.users.get(st.session_state.logged_user, {}).get('password', "test")
-                    if angler_name == "No registration yet":
-                        st.error("Angler must register first")
+                    if not st.session_state.daily_anglers:
+                        st.error("No registered anglers yet")
                     elif certifying_captain != st.session_state.logged_user:
                         st.error("Certifying Captain must be you")
                     elif actual_password != confirm_password:
@@ -380,7 +380,7 @@ else:
     with tabs[tab_index]:
         st.header("Captains Directory")
         county_filter = st.selectbox("Filter by County", ["All"] + COUNTIES)
-        captains = [u for u in st.session_state.users.values() if u['role'] == "Captain"]
+        captains = [u for u in st.session_state.users.values() if u.get('role') == "Captain"]
         if county_filter != "All":
             captains = [c for c in captains if c.get('county') == county_filter]
         for captain in captains:
