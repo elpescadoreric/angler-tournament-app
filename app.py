@@ -18,7 +18,7 @@ if 'events' not in st.session_state:
 if 'user_events' not in st.session_state:
     st.session_state.user_events = {}
 if 'daily_anglers' not in st.session_state:
-    st.session_state.daily_anglers = []  # List of registered Angler/Team usernames
+    st.session_state.daily_anglers = []
 if 'catches' not in st.session_state:
     st.session_state.catches = []
 if 'pending_catches' not in st.session_state:
@@ -110,7 +110,7 @@ def register(username, password, confirm_password, role):
         'state': "",
         'events': []
     }
-    # Add Angler/Team to daily_anglers list for Submit Catch dropdown
+    # Add registered Angler/Team to daily_anglers
     if role == "Angler/Team":
         if username not in st.session_state.daily_anglers:
             st.session_state.daily_anglers.append(username)
@@ -175,7 +175,6 @@ if st.session_state.logged_user is None:
                 'state': "Florida",
                 'events': []
             }
-            # Add default password for test user
             if "testcaptain" not in st.session_state.users:
                 st.session_state.users["testcaptain"] = {'password': "test"}
             st.rerun()
@@ -200,10 +199,8 @@ if st.session_state.logged_user is None:
                 'state': "",
                 'events': []
             }
-            # Add default password for test user
             if "testangler" not in st.session_state.users:
                 st.session_state.users["testangler"] = {'password': "test"}
-            # Add testangler to daily_anglers
             if "testangler" not in st.session_state.daily_anglers:
                 st.session_state.daily_anglers.append("testangler")
             st.rerun()
@@ -247,8 +244,13 @@ else:
         st.session_state.role = None
         st.rerun()
 
-    tabs = st.tabs(["My Profile", "Live Catch Feed", "Captains Directory", "Events", "My Events"])
+    # Tabs with Submit Catch as dedicated tab for Captains
+    tab_names = ["My Profile", "Live Catch Feed", "Captains Directory", "Events", "My Events"]
+    if st.session_state.role == "Captain":
+        tab_names.insert(1, "Submit Catch")  # Insert after My Profile
+    tabs = st.tabs(tab_names)
 
+    # My Profile
     with tabs[0]:
         st.header(st.session_state.logged_user)
 
